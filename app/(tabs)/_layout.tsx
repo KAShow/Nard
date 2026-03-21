@@ -3,7 +3,7 @@ import { Tabs, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Platform, View, Pressable, Text } from 'react-native';
 import { useAuth } from '@/hooks/useAuth';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { spacing } from '@/constants/theme';
 
@@ -12,11 +12,25 @@ const TAB_CONFIG: Record<string, { label: string; icon: keyof typeof MaterialIco
   profile: { label: 'الملف الشخصي', icon: 'person' },
 };
 
+const TAB_BAR_HEIGHT = 64;
+
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
   const { user, loading } = useAuth();
   const router = useRouter();
   const { colors, shadows } = useTheme();
+
+  const tabBarBottom = useMemo(() => {
+    return Platform.select({
+      ios: Math.max(insets.bottom, 8) + 8,
+      android: 16,
+      default: 16,
+    });
+  }, [insets.bottom]);
+
+  const sceneBottomPadding = useMemo(() => {
+    return TAB_BAR_HEIGHT + tabBarBottom + 16;
+  }, [tabBarBottom]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -28,22 +42,20 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        sceneStyle: { paddingBottom: 80 },
+        sceneStyle: { paddingBottom: sceneBottomPadding },
       }}
       tabBar={({ state, navigation }) => {
         return (
           <View
             style={{
               position: 'absolute',
-              bottom: 0,
-              left: 0,
-              right: 0,
-              marginHorizontal: 16,
-              marginBottom: insets.bottom > 0 ? insets.bottom + 8 : 16,
+              bottom: tabBarBottom,
+              left: 16,
+              right: 16,
               backgroundColor: colors.surface,
               borderRadius: 24,
               flexDirection: 'row',
-              height: 64,
+              height: TAB_BAR_HEIGHT,
               alignItems: 'center',
               ...shadows.lg,
             }}
