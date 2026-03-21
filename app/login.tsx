@@ -6,15 +6,15 @@ import { useAuth } from '@/hooks/useAuth';
 import { colors, spacing, borderRadius, typography, shadows } from '@/constants/theme';
 import { useAlert } from '@/template';
 
-type ViewMode = 'initial' | 'login' | 'signup' | 'otp';
+type ViewMode = 'initial' | 'login' | 'signup';
 
 export default function LoginScreen() {
   const [viewMode, setViewMode] = useState<ViewMode>('initial');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [otp, setOtp] = useState('');
-  const { signInWithPassword, signUpWithPassword, sendOTP, verifyOTPAndLogin, operationLoading } = useAuth();
+
+  const { signInWithPassword, signUpWithPassword, operationLoading } = useAuth();
   const router = useRouter();
   const { showAlert } = useAlert();
 
@@ -33,7 +33,7 @@ export default function LoginScreen() {
     router.replace('/(tabs)');
   };
 
-  const handleSignupSendOTP = async () => {
+  const handleSignup = async () => {
     if (!email.trim()) {
       showAlert('تنبيه', 'الرجاء إدخال البريد الإلكتروني');
       return;
@@ -49,28 +49,13 @@ export default function LoginScreen() {
       return;
     }
 
-    const { error } = await sendOTP(email.trim());
+    const { error, user } = await signUpWithPassword(email.trim(), password);
     if (error) {
       showAlert('خطأ', error);
       return;
     }
 
-    setViewMode('otp');
-    showAlert('تم', 'تم إرسال رمز التحقق إلى بريدك الإلكتروني');
-  };
-
-  const handleVerifyOTP = async () => {
-    if (!otp.trim() || otp.length !== 4) {
-      showAlert('تنبيه', 'الرجاء إدخال رمز التحقق المكون من 4 أرقام');
-      return;
-    }
-
-    const { error } = await verifyOTPAndLogin(email.trim(), otp, { password });
-    if (error) {
-      showAlert('خطأ', error);
-      return;
-    }
-
+    showAlert('مرحباً!', 'تم إنشاء حسابك بنجاح');
     router.replace('/(tabs)');
   };
 
@@ -237,13 +222,13 @@ export default function LoginScreen() {
                 styles.button,
                 pressed && styles.buttonPressed,
               ]}
-              onPress={handleSignupSendOTP}
+              onPress={handleSignup}
               disabled={operationLoading}
             >
               {operationLoading ? (
                 <ActivityIndicator color={colors.surface} />
               ) : (
-                <Text style={styles.buttonText}>إرسال رمز التحقق</Text>
+                <Text style={styles.buttonText}>إنشاء الحساب</Text>
               )}
             </Pressable>
           </View>
@@ -252,63 +237,7 @@ export default function LoginScreen() {
     );
   }
 
-  // OTP view
-  return (
-    <KeyboardAvoidingView 
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-    >
-      <View style={styles.content}>
-        <Pressable onPress={() => setViewMode('signup')} style={styles.backButton}>
-          <MaterialIcons name="arrow-forward" size={24} color={colors.text} />
-        </Pressable>
 
-        <View style={styles.header}>
-          <MaterialIcons name="verified-user" size={60} color={colors.accent} />
-          <Text style={styles.title}>التحقق من البريد</Text>
-          <Text style={styles.subtitle}>أدخل الرمز المرسل إلى {email}</Text>
-        </View>
-
-        <View style={styles.form}>
-          <View style={styles.inputContainer}>
-            <MaterialIcons name="lock" size={24} color={colors.textSecondary} />
-            <TextInput
-              style={styles.input}
-              placeholder="رمز التحقق (4 أرقام)"
-              placeholderTextColor={colors.textLight}
-              value={otp}
-              onChangeText={setOtp}
-              keyboardType="number-pad"
-              maxLength={4}
-            />
-          </View>
-
-          <Pressable
-            style={({ pressed }) => [
-              styles.button,
-              pressed && styles.buttonPressed,
-            ]}
-            onPress={handleVerifyOTP}
-            disabled={operationLoading}
-          >
-            {operationLoading ? (
-              <ActivityIndicator color={colors.surface} />
-            ) : (
-              <Text style={styles.buttonText}>تأكيد</Text>
-            )}
-          </Pressable>
-
-          <Pressable
-            style={styles.linkButton}
-            onPress={handleSignupSendOTP}
-            disabled={operationLoading}
-          >
-            <Text style={styles.linkText}>إعادة إرسال الرمز</Text>
-          </Pressable>
-        </View>
-      </View>
-    </KeyboardAvoidingView>
-  );
 }
 
 function FeatureItem({ icon, text }: { icon: string; text: string }) {
