@@ -1,13 +1,20 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, TextInput, Modal } from 'react-native';
+import { View, Text, ScrollView, Pressable, TextInput, Modal } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/hooks/useAuth';
 import { useSessions } from '@/hooks/useSessions';
 import { RandomPicker } from '@/components/RandomPicker';
-import { colors, spacing, borderRadius, typography, shadows } from '@/constants/theme';
+import { spacing, borderRadius, typography } from '@/constants/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 import { useAlert } from '@/template';
+
+const STATUS_CONFIG = {
+  upcoming: { label: 'قادمة', icon: 'schedule' as const },
+  ongoing: { label: 'جارية الآن', icon: 'play-circle-filled' as const },
+  completed: { label: 'منتهية', icon: 'check-circle' as const },
+};
 
 export default function SessionDetailScreen() {
   const { id } = useLocalSearchParams();
@@ -16,6 +23,7 @@ export default function SessionDetailScreen() {
   const { user } = useAuth();
   const { sessions, joinSession, leaveSession, rateSession } = useSessions();
   const { showAlert } = useAlert();
+  const { colors, shadows } = useTheme();
 
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [gameBrought, setGameBrought] = useState('');
@@ -26,9 +34,29 @@ export default function SessionDetailScreen() {
 
   if (!session || !user) {
     return (
-      <View style={styles.error}>
-        <MaterialIcons name="error" size={64} color={colors.textLight} />
-        <Text style={styles.errorText}>الجلسة غير موجودة</Text>
+      <View style={{
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: colors.background,
+      }}>
+        <View style={{
+          width: 80,
+          height: 80,
+          borderRadius: 40,
+          backgroundColor: colors.surfaceLight,
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginBottom: spacing.md,
+        }}>
+          <MaterialIcons name="error-outline" size={40} color={colors.textLight} />
+        </View>
+        <Text style={{
+          fontSize: typography.sizes.lg,
+          fontWeight: typography.weights.semibold,
+          color: colors.textSecondary,
+          marginTop: spacing.sm,
+        }}>الجلسة غير موجودة</Text>
       </View>
     );
   }
@@ -37,6 +65,11 @@ export default function SessionDetailScreen() {
   const isFull = session.attendees.length >= session.maxPlayers;
   const isHost = session.hostId === user.id;
   const userRating = session.ratings.find(r => r.userId === user.id);
+
+  const statusColor = session.status === 'upcoming' ? colors.primary
+    : session.status === 'ongoing' ? colors.success
+    : colors.textLight;
+  const statusConfig = STATUS_CONFIG[session.status];
 
   const handleJoin = async () => {
     if (isFull && !isAttending) {
@@ -77,142 +110,328 @@ export default function SessionDetailScreen() {
   };
 
   const attendeeNames = session.attendees.map(a => a.userName);
+  const AVATAR_COLORS = [colors.primary, colors.accent, colors.secondary, colors.badge];
 
   return (
-    <ScrollView 
-      style={styles.container}
-      contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing.lg }]}
+    <ScrollView
+      style={{ flex: 1, backgroundColor: colors.background }}
+      contentContainerStyle={{ padding: spacing.md, paddingBottom: insets.bottom + spacing.lg }}
     >
-      <View style={styles.header}>
-        <View style={styles.titleRow}>
+      {/* Status Banner */}
+      <View style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: statusColor + '15',
+        borderRadius: borderRadius.md,
+        paddingVertical: spacing.sm,
+        paddingHorizontal: spacing.md,
+        marginBottom: spacing.md,
+        borderWidth: 1,
+        borderColor: statusColor + '30',
+      }}>
+        <MaterialIcons name={statusConfig.icon} size={18} color={statusColor} />
+        <Text style={{
+          fontSize: typography.sizes.sm,
+          fontWeight: typography.weights.semibold,
+          color: statusColor,
+          marginStart: spacing.xs,
+        }}>{statusConfig.label}</Text>
+      </View>
+
+      {/* Header */}
+      <View style={{ marginBottom: spacing.md }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm }}>
           <MaterialIcons name="casino" size={32} color={colors.primary} />
-          <Text style={styles.title}>{session.title}</Text>
+          <Text style={{
+            fontSize: typography.sizes.title,
+            fontWeight: typography.weights.bold,
+            color: colors.text,
+            marginStart: spacing.sm,
+            flex: 1,
+          }}>{session.title}</Text>
         </View>
         {isHost && (
-          <View style={styles.hostBadge}>
-            <Text style={styles.hostBadgeText}>أنت المنظم</Text>
+          <View style={{
+            backgroundColor: colors.badge,
+            paddingHorizontal: spacing.md,
+            paddingVertical: spacing.xs + 1,
+            borderRadius: borderRadius.round,
+            alignSelf: 'flex-start',
+          }}>
+            <Text style={{
+              color: '#FFFFFF',
+              fontSize: typography.sizes.xs,
+              fontWeight: typography.weights.bold,
+            }}>أنت المنظم</Text>
           </View>
         )}
       </View>
 
       {session.description && (
-        <Text style={styles.description}>{session.description}</Text>
+        <Text style={{
+          fontSize: typography.sizes.md,
+          color: colors.textSecondary,
+          lineHeight: 24,
+          marginBottom: spacing.md,
+        }}>{session.description}</Text>
       )}
 
-      <View style={styles.infoCard}>
-        <InfoRow icon="calendar-today" label="التاريخ" value={session.date} />
-        <InfoRow icon="access-time" label="الوقت" value={session.time} />
-        <InfoRow icon="location-on" label="المكان" value={session.location} />
+      {/* Info Card */}
+      <View style={{
+        backgroundColor: colors.surface,
+        borderRadius: borderRadius.lg,
+        padding: spacing.md,
+        marginBottom: spacing.lg,
+        ...shadows.sm,
+      }}>
+        {[
+          { icon: 'calendar-today' as const, label: 'التاريخ', value: session.date, color: colors.primary },
+          { icon: 'access-time' as const, label: 'الوقت', value: session.time, color: colors.accent },
+          { icon: 'location-on' as const, label: 'المكان', value: session.location, color: colors.secondary },
+        ].map((info, idx) => (
+          <View key={idx} style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginBottom: idx < 2 ? spacing.md : 0,
+          }}>
+            <View style={{
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              backgroundColor: info.color + '15',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <MaterialIcons name={info.icon} size={18} color={info.color} />
+            </View>
+            <View style={{ marginStart: spacing.sm, flex: 1 }}>
+              <Text style={{
+                fontSize: typography.sizes.xs,
+                color: colors.textLight,
+              }}>{info.label}</Text>
+              <Text style={{
+                fontSize: typography.sizes.md,
+                fontWeight: typography.weights.semibold,
+                color: colors.text,
+              }}>{info.value}</Text>
+            </View>
+          </View>
+        ))}
         {session.locationUrl && (
-          <Pressable 
-            style={styles.linkButton}
+          <Pressable
+            style={{ flexDirection: 'row', alignItems: 'center', marginTop: spacing.sm }}
             onPress={() => showAlert('رابط الموقع', session.locationUrl || '')}
           >
             <MaterialIcons name="link" size={20} color={colors.accent} />
-            <Text style={styles.linkText}>فتح الموقع في الخرائط</Text>
+            <Text style={{
+              fontSize: typography.sizes.sm,
+              color: colors.accent,
+              marginStart: spacing.xs,
+            }}>فتح الموقع في الخرائط</Text>
           </Pressable>
         )}
       </View>
 
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>
+      {/* Attendees Section */}
+      <View style={{ marginBottom: spacing.lg }}>
+        <Text style={{
+          fontSize: typography.sizes.lg,
+          fontWeight: typography.weights.semibold,
+          color: colors.text,
+          marginBottom: spacing.sm,
+        }}>
           الحضور ({session.attendees.length}/{session.maxPlayers})
         </Text>
         {session.attendees.length === 0 ? (
-          <Text style={styles.emptyText}>لا يوجد حضور بعد</Text>
+          <View style={{
+            backgroundColor: colors.surface,
+            borderRadius: borderRadius.md,
+            padding: spacing.xl,
+            alignItems: 'center',
+            ...shadows.sm,
+          }}>
+            <MaterialIcons name="people-outline" size={40} color={colors.textLight} />
+            <Text style={{
+              fontSize: typography.sizes.sm,
+              color: colors.textLight,
+              marginTop: spacing.sm,
+            }}>لا يوجد حضور بعد</Text>
+          </View>
         ) : (
-          session.attendees.map(attendee => (
-            <View key={attendee.userId} style={styles.attendeeCard}>
-              <View style={styles.attendeeHeader}>
-                <MaterialIcons name="person" size={24} color={colors.primary} />
-                <Text style={styles.attendeeName}>{attendee.userName}</Text>
+          session.attendees.map((attendee, idx) => {
+            const avatarColor = AVATAR_COLORS[idx % AVATAR_COLORS.length];
+            const hasBrought = attendee.gameBrought || attendee.snackBrought;
+            return (
+              <View key={attendee.userId} style={{
+                backgroundColor: colors.surface,
+                borderRadius: borderRadius.md,
+                padding: spacing.md,
+                marginBottom: spacing.sm,
+                borderStartWidth: hasBrought ? 3 : 0,
+                borderStartColor: attendee.gameBrought ? colors.accent : colors.secondary,
+                ...shadows.sm,
+              }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: attendee.gameBrought || attendee.snackBrought ? spacing.sm : 0 }}>
+                  <View style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 18,
+                    backgroundColor: avatarColor,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}>
+                    <Text style={{ color: '#FFFFFF', fontSize: typography.sizes.md, fontWeight: typography.weights.bold }}>
+                      {attendee.userName.charAt(0)}
+                    </Text>
+                  </View>
+                  <Text style={{
+                    fontSize: typography.sizes.md,
+                    fontWeight: typography.weights.semibold,
+                    color: colors.text,
+                    marginStart: spacing.sm,
+                  }}>{attendee.userName}</Text>
+                </View>
+                {attendee.gameBrought && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: spacing.xs, marginStart: spacing.xxl - 4 }}>
+                    <MaterialIcons name="videogame-asset" size={14} color={colors.accent} />
+                    <Text style={{ fontSize: typography.sizes.sm, color: colors.textSecondary, marginStart: spacing.xs }}>{attendee.gameBrought}</Text>
+                  </View>
+                )}
+                {attendee.snackBrought && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: spacing.xs, marginStart: spacing.xxl - 4 }}>
+                    <MaterialIcons name="fastfood" size={14} color={colors.secondary} />
+                    <Text style={{ fontSize: typography.sizes.sm, color: colors.textSecondary, marginStart: spacing.xs }}>{attendee.snackBrought}</Text>
+                  </View>
+                )}
               </View>
-              {attendee.gameBrought && (
-                <View style={styles.attendeeInfo}>
-                  <MaterialIcons name="videogame-asset" size={16} color={colors.accent} />
-                  <Text style={styles.attendeeInfoText}>{attendee.gameBrought}</Text>
-                </View>
-              )}
-              {attendee.snackBrought && (
-                <View style={styles.attendeeInfo}>
-                  <MaterialIcons name="fastfood" size={16} color={colors.secondary} />
-                  <Text style={styles.attendeeInfoText}>{attendee.snackBrought}</Text>
-                </View>
-              )}
-            </View>
-          ))
+            );
+          })
         )}
       </View>
 
+      {/* Random Picker Button */}
       {session.attendees.length > 0 && (
-        <View style={styles.section}>
+        <View style={{ marginBottom: spacing.lg }}>
           <Pressable
-            style={({ pressed }) => [
-              styles.pickerButton,
-              pressed && styles.pickerButtonPressed,
-            ]}
+            style={({ pressed }) => [{
+              flexDirection: 'row',
+              backgroundColor: colors.dice,
+              paddingVertical: spacing.md,
+              paddingHorizontal: spacing.lg,
+              borderRadius: borderRadius.lg,
+              alignItems: 'center',
+              justifyContent: 'center',
+              ...shadows.md,
+            }, pressed && { opacity: 0.8, transform: [{ scale: 0.98 }] }]}
             onPress={() => setShowPickerModal(true)}
           >
-            <MaterialIcons name="casino" size={24} color={colors.surface} />
-            <Text style={styles.pickerButtonText}>عجلة الحظ</Text>
+            <MaterialIcons name="casino" size={24} color="#FFFFFF" />
+            <Text style={{
+              fontSize: typography.sizes.lg,
+              fontWeight: typography.weights.bold,
+              color: '#FFFFFF',
+              marginStart: spacing.sm,
+            }}>عجلة الحظ</Text>
           </Pressable>
         </View>
       )}
 
+      {/* Rating Section */}
       {session.status === 'completed' && (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>قيّم الجلسة</Text>
-          <View style={styles.ratingButtons}>
+        <View style={{ marginBottom: spacing.lg }}>
+          <Text style={{
+            fontSize: typography.sizes.lg,
+            fontWeight: typography.weights.semibold,
+            color: colors.text,
+            marginBottom: spacing.sm,
+          }}>قيّم الجلسة</Text>
+          <View style={{
+            flexDirection: 'row',
+            justifyContent: 'space-around',
+            backgroundColor: colors.surface,
+            borderRadius: borderRadius.lg,
+            padding: spacing.md,
+            marginBottom: spacing.sm,
+            ...shadows.sm,
+          }}>
             {['🔥', '😍', '👍', '😊', '😐'].map(emoji => (
               <Pressable
                 key={emoji}
-                style={({ pressed }) => [
-                  styles.emojiButton,
-                  userRating?.emoji === emoji && styles.emojiButtonSelected,
-                  pressed && styles.emojiButtonPressed,
-                ]}
+                style={({ pressed }) => [{
+                  width: 52,
+                  height: 52,
+                  borderRadius: 26,
+                  backgroundColor: userRating?.emoji === emoji ? colors.primaryLight + '30' : colors.surfaceLight,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  borderWidth: userRating?.emoji === emoji ? 2 : 0,
+                  borderColor: colors.primary,
+                }, pressed && { opacity: 0.7, transform: [{ scale: 0.9 }] }]}
                 onPress={() => handleRate(emoji)}
               >
-                <Text style={styles.emoji}>{emoji}</Text>
+                <Text style={{ fontSize: 28 }}>{emoji}</Text>
               </Pressable>
             ))}
           </View>
           {session.ratings.length > 0 && (
-            <View style={styles.ratingsDisplay}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs }}>
               {session.ratings.map((rating, index) => (
-                <Text key={index} style={styles.ratingEmoji}>{rating.emoji}</Text>
+                <Text key={index} style={{ fontSize: 22 }}>{rating.emoji}</Text>
               ))}
             </View>
           )}
         </View>
       )}
 
-      <View style={styles.actions}>
+      {/* Action Buttons */}
+      <View style={{ marginTop: spacing.sm }}>
         {!isAttending ? (
           <Pressable
-            style={({ pressed }) => [
-              styles.primaryButton,
-              isFull && styles.disabledButton,
-              pressed && !isFull && styles.primaryButtonPressed,
-            ]}
+            style={({ pressed }) => [{
+              flexDirection: 'row',
+              backgroundColor: colors.primary,
+              paddingVertical: spacing.md + 2,
+              paddingHorizontal: spacing.lg,
+              borderRadius: borderRadius.lg,
+              alignItems: 'center',
+              justifyContent: 'center',
+              ...shadows.md,
+            }, isFull && { opacity: 0.5 }, pressed && !isFull && { opacity: 0.85, transform: [{ scale: 0.98 }] }]}
             onPress={() => setShowJoinModal(true)}
             disabled={isFull}
           >
-            <MaterialIcons name="check-circle" size={24} color={colors.surface} />
-            <Text style={styles.primaryButtonText}>
-              {isFull ? 'الجلسة مكتملة' : 'أنا جاي'}
-            </Text>
+            <MaterialIcons name="check-circle" size={24} color="#FFFFFF" />
+            <Text style={{
+              fontSize: typography.sizes.lg,
+              fontWeight: typography.weights.bold,
+              color: '#FFFFFF',
+              marginStart: spacing.sm,
+            }}>{isFull ? 'الجلسة مكتملة' : 'أنا جاي'}</Text>
           </Pressable>
         ) : (
           <Pressable
-            style={({ pressed }) => [
-              styles.secondaryButton,
-              pressed && styles.secondaryButtonPressed,
-            ]}
+            style={({ pressed }) => [{
+              flexDirection: 'row',
+              backgroundColor: colors.surface,
+              borderWidth: 1.5,
+              borderColor: colors.error,
+              paddingVertical: spacing.md + 2,
+              paddingHorizontal: spacing.lg,
+              borderRadius: borderRadius.lg,
+              alignItems: 'center',
+              justifyContent: 'center',
+              ...shadows.sm,
+            }, pressed && { opacity: 0.7, backgroundColor: colors.error + '08' }]}
             onPress={handleLeave}
           >
             <MaterialIcons name="cancel" size={24} color={colors.error} />
-            <Text style={styles.secondaryButtonText}>إلغاء الحضور</Text>
+            <Text style={{
+              fontSize: typography.sizes.lg,
+              fontWeight: typography.weights.semibold,
+              color: colors.error,
+              marginStart: spacing.sm,
+            }}>إلغاء الحضور</Text>
           </Pressable>
         )}
       </View>
@@ -224,14 +443,53 @@ export default function SessionDetailScreen() {
         animationType="slide"
         onRequestClose={() => setShowJoinModal(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>تأكيد الحضور</Text>
-            
-            <View style={styles.modalField}>
-              <Text style={styles.modalLabel}>وش بتجيب معك؟ (اللعبة)</Text>
+        <View style={{
+          flex: 1,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          justifyContent: 'flex-end',
+        }}>
+          <View style={{
+            backgroundColor: colors.surface,
+            borderTopLeftRadius: borderRadius.xl,
+            borderTopRightRadius: borderRadius.xl,
+            padding: spacing.lg,
+            paddingBottom: insets.bottom + spacing.lg,
+          }}>
+            <View style={{
+              width: 40,
+              height: 4,
+              borderRadius: 2,
+              backgroundColor: colors.border,
+              alignSelf: 'center',
+              marginBottom: spacing.lg,
+            }} />
+            <Text style={{
+              fontSize: typography.sizes.xl,
+              fontWeight: typography.weights.bold,
+              color: colors.text,
+              marginBottom: spacing.lg,
+              textAlign: 'center',
+            }}>تأكيد الحضور</Text>
+
+            <View style={{ marginBottom: spacing.md }}>
+              <Text style={{
+                fontSize: typography.sizes.sm,
+                fontWeight: typography.weights.semibold,
+                color: colors.text,
+                marginBottom: spacing.xs,
+              }}>وش بتجيب معك؟ (اللعبة)</Text>
               <TextInput
-                style={styles.modalInput}
+                style={{
+                  backgroundColor: colors.background,
+                  borderRadius: borderRadius.md,
+                  paddingHorizontal: spacing.md,
+                  paddingVertical: spacing.sm + 2,
+                  fontSize: typography.sizes.md,
+                  color: colors.text,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  textAlign: 'right',
+                }}
                 placeholder="مثال: كاتان، مونوبولي"
                 placeholderTextColor={colors.textLight}
                 value={gameBrought}
@@ -239,10 +497,25 @@ export default function SessionDetailScreen() {
               />
             </View>
 
-            <View style={styles.modalField}>
-              <Text style={styles.modalLabel}>الخفايف 🍿</Text>
+            <View style={{ marginBottom: spacing.lg }}>
+              <Text style={{
+                fontSize: typography.sizes.sm,
+                fontWeight: typography.weights.semibold,
+                color: colors.text,
+                marginBottom: spacing.xs,
+              }}>الخفايف 🍿</Text>
               <TextInput
-                style={styles.modalInput}
+                style={{
+                  backgroundColor: colors.background,
+                  borderRadius: borderRadius.md,
+                  paddingHorizontal: spacing.md,
+                  paddingVertical: spacing.sm + 2,
+                  fontSize: typography.sizes.md,
+                  color: colors.text,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  textAlign: 'right',
+                }}
                 placeholder="مثال: قهوة، حلا، فطائر"
                 placeholderTextColor={colors.textLight}
                 value={snackBrought}
@@ -250,26 +523,41 @@ export default function SessionDetailScreen() {
               />
             </View>
 
-            <View style={styles.modalButtons}>
+            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
               <Pressable
-                style={({ pressed }) => [
-                  styles.modalButton,
-                  styles.modalButtonSecondary,
-                  pressed && styles.modalButtonPressed,
-                ]}
+                style={({ pressed }) => [{
+                  flex: 1,
+                  paddingVertical: spacing.md,
+                  borderRadius: borderRadius.md,
+                  alignItems: 'center',
+                  backgroundColor: colors.background,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }, pressed && { opacity: 0.7 }]}
                 onPress={() => setShowJoinModal(false)}
               >
-                <Text style={styles.modalButtonTextSecondary}>إلغاء</Text>
+                <Text style={{
+                  fontSize: typography.sizes.md,
+                  fontWeight: typography.weights.semibold,
+                  color: colors.text,
+                }}>إلغاء</Text>
               </Pressable>
               <Pressable
-                style={({ pressed }) => [
-                  styles.modalButton,
-                  styles.modalButtonPrimary,
-                  pressed && styles.modalButtonPressed,
-                ]}
+                style={({ pressed }) => [{
+                  flex: 1,
+                  paddingVertical: spacing.md,
+                  borderRadius: borderRadius.md,
+                  alignItems: 'center',
+                  backgroundColor: colors.primary,
+                  ...shadows.sm,
+                }, pressed && { opacity: 0.7 }]}
                 onPress={handleJoin}
               >
-                <Text style={styles.modalButtonTextPrimary}>تأكيد</Text>
+                <Text style={{
+                  fontSize: typography.sizes.md,
+                  fontWeight: typography.weights.bold,
+                  color: '#FFFFFF',
+                }}>تأكيد</Text>
               </Pressable>
             </View>
           </View>
@@ -283,8 +571,20 @@ export default function SessionDetailScreen() {
         animationType="slide"
         onRequestClose={() => setShowPickerModal(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+        <View style={{
+          flex: 1,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: spacing.md,
+        }}>
+          <View style={{
+            backgroundColor: colors.surface,
+            borderRadius: borderRadius.xl,
+            padding: spacing.lg,
+            width: '100%',
+            maxWidth: 400,
+          }}>
             <RandomPicker
               items={attendeeNames}
               title="من يبدأ؟"
@@ -294,13 +594,21 @@ export default function SessionDetailScreen() {
               }}
             />
             <Pressable
-              style={({ pressed }) => [
-                styles.closeButton,
-                pressed && styles.closeButtonPressed,
-              ]}
+              style={({ pressed }) => [{
+                backgroundColor: colors.background,
+                paddingVertical: spacing.sm + 2,
+                paddingHorizontal: spacing.lg,
+                borderRadius: borderRadius.md,
+                marginTop: spacing.md,
+                alignItems: 'center',
+              }, pressed && { opacity: 0.7 }]}
               onPress={() => setShowPickerModal(false)}
             >
-              <Text style={styles.closeButtonText}>إغلاق</Text>
+              <Text style={{
+                fontSize: typography.sizes.md,
+                fontWeight: typography.weights.semibold,
+                color: colors.text,
+              }}>إغلاق</Text>
             </Pressable>
           </View>
         </View>
@@ -308,333 +616,3 @@ export default function SessionDetailScreen() {
     </ScrollView>
   );
 }
-
-function InfoRow({ icon, label, value }: { icon: string; label: string; value: string }) {
-  return (
-    <View style={styles.infoRow}>
-      <MaterialIcons name={icon as any} size={20} color={colors.primary} />
-      <View style={styles.infoContent}>
-        <Text style={styles.infoLabel}>{label}</Text>
-        <Text style={styles.infoValue}>{value}</Text>
-      </View>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  content: {
-    padding: spacing.md,
-  },
-  error: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.background,
-  },
-  errorText: {
-    fontSize: typography.sizes.lg,
-    color: colors.textLight,
-    marginTop: spacing.md,
-  },
-  header: {
-    marginBottom: spacing.md,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  title: {
-    fontSize: typography.sizes.title,
-    fontWeight: typography.weights.bold,
-    color: colors.text,
-    marginLeft: spacing.sm,
-    flex: 1,
-  },
-  hostBadge: {
-    backgroundColor: colors.badge,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.sm,
-    alignSelf: 'flex-start',
-  },
-  hostBadgeText: {
-    color: colors.surface,
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold,
-  },
-  description: {
-    fontSize: typography.sizes.md,
-    color: colors.textSecondary,
-    lineHeight: 22,
-    marginBottom: spacing.md,
-  },
-  infoCard: {
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-    ...shadows.sm,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  infoContent: {
-    marginLeft: spacing.sm,
-    flex: 1,
-  },
-  infoLabel: {
-    fontSize: typography.sizes.xs,
-    color: colors.textLight,
-  },
-  infoValue: {
-    fontSize: typography.sizes.md,
-    fontWeight: typography.weights.semibold,
-    color: colors.text,
-  },
-  linkButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: spacing.xs,
-  },
-  linkText: {
-    fontSize: typography.sizes.sm,
-    color: colors.accent,
-    marginLeft: spacing.xs,
-  },
-  section: {
-    marginBottom: spacing.md,
-  },
-  sectionTitle: {
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.semibold,
-    color: colors.text,
-    marginBottom: spacing.sm,
-  },
-  emptyText: {
-    fontSize: typography.sizes.sm,
-    color: colors.textLight,
-    textAlign: 'center',
-    paddingVertical: spacing.lg,
-  },
-  attendeeCard: {
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
-    ...shadows.sm,
-  },
-  attendeeHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.xs,
-  },
-  attendeeName: {
-    fontSize: typography.sizes.md,
-    fontWeight: typography.weights.semibold,
-    color: colors.text,
-    marginLeft: spacing.sm,
-  },
-  attendeeInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: spacing.xs,
-  },
-  attendeeInfoText: {
-    fontSize: typography.sizes.sm,
-    color: colors.textSecondary,
-    marginLeft: spacing.xs,
-  },
-  pickerButton: {
-    flexDirection: 'row',
-    backgroundColor: colors.dice,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    borderRadius: borderRadius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadows.md,
-  },
-  pickerButtonPressed: {
-    opacity: 0.8,
-    transform: [{ scale: 0.98 }],
-  },
-  pickerButtonText: {
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.bold,
-    color: colors.surface,
-    marginLeft: spacing.sm,
-  },
-  ratingButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: spacing.md,
-  },
-  emojiButton: {
-    width: 56,
-    height: 56,
-    borderRadius: borderRadius.round,
-    backgroundColor: colors.surface,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...shadows.sm,
-  },
-  emojiButtonSelected: {
-    backgroundColor: colors.surfaceLight,
-    ...shadows.md,
-  },
-  emojiButtonPressed: {
-    opacity: 0.7,
-    transform: [{ scale: 0.9 }],
-  },
-  emoji: {
-    fontSize: 32,
-  },
-  ratingsDisplay: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.xs,
-  },
-  ratingEmoji: {
-    fontSize: 24,
-  },
-  actions: {
-    marginTop: spacing.md,
-  },
-  primaryButton: {
-    flexDirection: 'row',
-    backgroundColor: colors.primary,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    borderRadius: borderRadius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadows.md,
-  },
-  primaryButtonPressed: {
-    opacity: 0.8,
-    transform: [{ scale: 0.98 }],
-  },
-  primaryButtonText: {
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.bold,
-    color: colors.surface,
-    marginLeft: spacing.sm,
-  },
-  secondaryButton: {
-    flexDirection: 'row',
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.error,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    borderRadius: borderRadius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadows.sm,
-  },
-  secondaryButtonPressed: {
-    opacity: 0.7,
-  },
-  secondaryButtonText: {
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.semibold,
-    color: colors.error,
-    marginLeft: spacing.sm,
-  },
-  disabledButton: {
-    opacity: 0.5,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing.md,
-  },
-  modalContent: {
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
-    padding: spacing.lg,
-    width: '100%',
-    maxWidth: 400,
-  },
-  modalTitle: {
-    fontSize: typography.sizes.xl,
-    fontWeight: typography.weights.bold,
-    color: colors.text,
-    marginBottom: spacing.md,
-    textAlign: 'center',
-  },
-  modalField: {
-    marginBottom: spacing.md,
-  },
-  modalLabel: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold,
-    color: colors.text,
-    marginBottom: spacing.xs,
-  },
-  modalInput: {
-    backgroundColor: colors.background,
-    borderRadius: borderRadius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    fontSize: typography.sizes.md,
-    color: colors.text,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginTop: spacing.md,
-  },
-  modalButton: {
-    flex: 1,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.md,
-    alignItems: 'center',
-  },
-  modalButtonPrimary: {
-    backgroundColor: colors.primary,
-  },
-  modalButtonSecondary: {
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  modalButtonPressed: {
-    opacity: 0.7,
-  },
-  modalButtonTextPrimary: {
-    fontSize: typography.sizes.md,
-    fontWeight: typography.weights.semibold,
-    color: colors.surface,
-  },
-  modalButtonTextSecondary: {
-    fontSize: typography.sizes.md,
-    fontWeight: typography.weights.semibold,
-    color: colors.text,
-  },
-  closeButton: {
-    backgroundColor: colors.background,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    borderRadius: borderRadius.md,
-    marginTop: spacing.md,
-    alignItems: 'center',
-  },
-  closeButtonPressed: {
-    opacity: 0.7,
-  },
-  closeButtonText: {
-    fontSize: typography.sizes.md,
-    fontWeight: typography.weights.semibold,
-    color: colors.text,
-  },
-});

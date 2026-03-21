@@ -1,20 +1,24 @@
 import React from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Session } from '@/types';
-import { colors, spacing, borderRadius, typography, shadows } from '@/constants/theme';
+import { spacing, borderRadius, typography } from '@/constants/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 import { useRouter } from 'expo-router';
 
 interface SessionCardProps {
   session: Session;
 }
 
+const AVATAR_COLORS_KEYS = ['primary', 'accent', 'secondary', 'badge'] as const;
+
 export function SessionCard({ session }: SessionCardProps) {
   const router = useRouter();
+  const { colors, shadows } = useTheme();
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
-    return new Intl.DateTimeFormat('ar', { 
+    return new Intl.DateTimeFormat('ar', {
       weekday: 'long',
       day: 'numeric',
       month: 'long'
@@ -23,149 +27,289 @@ export function SessionCard({ session }: SessionCardProps) {
 
   const spotsLeft = session.maxPlayers - session.attendees.length;
   const isFull = spotsLeft <= 0;
+  const fillPercent = Math.min((session.attendees.length / session.maxPlayers) * 100, 100);
+  const isAlmostFull = fillPercent > 90;
+
+  const statusBorderColor = (() => {
+    switch (session.status) {
+      case 'upcoming':
+        return colors.primary;
+      case 'ongoing':
+        return colors.success;
+      case 'completed':
+        return colors.textLight;
+    }
+  })();
+
+  const visibleAttendees = session.attendees.slice(0, 4);
+  const extraCount = session.attendees.length - 4;
 
   return (
     <Pressable
       style={({ pressed }) => [
-        styles.container,
-        pressed && styles.pressed,
+        {
+          backgroundColor: colors.surface,
+          borderRadius: borderRadius.lg,
+          padding: spacing.md,
+          marginBottom: spacing.md,
+          borderStartWidth: 4,
+          borderStartColor: statusBorderColor,
+          ...shadows.md,
+        },
+        pressed && {
+          opacity: 0.7,
+          transform: [{ scale: 0.98 }],
+        },
       ]}
-      onPress={() => router.push(`/session/${session.id}`)}
+      onPress={() => router.push(`/session/${session.id}` as any)}
     >
-      <View style={styles.header}>
-        <View style={styles.titleRow}>
+      {/* Header */}
+      <View
+        style={{
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          marginBottom: spacing.sm,
+        }}
+      >
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            flex: 1,
+            marginEnd: spacing.sm,
+          }}
+        >
           <MaterialIcons name="casino" size={24} color={colors.primary} />
-          <Text style={styles.title} numberOfLines={1}>{session.title}</Text>
+          <Text
+            style={{
+              fontSize: typography.sizes.lg,
+              fontWeight: typography.weights.bold,
+              color: colors.text,
+              marginStart: spacing.sm,
+              flex: 1,
+            }}
+            numberOfLines={1}
+          >
+            {session.title}
+          </Text>
         </View>
-        <View style={[styles.badge, isFull && styles.badgeFull]}>
-          <Text style={styles.badgeText}>
+        <View
+          style={{
+            backgroundColor: isFull ? colors.error : colors.accent,
+            paddingHorizontal: spacing.sm + 2,
+            paddingVertical: spacing.xs + 1,
+            borderRadius: borderRadius.round,
+            opacity: isFull ? 0.85 : 1,
+          }}
+        >
+          <Text
+            style={{
+              color: '#FFFFFF',
+              fontSize: typography.sizes.xs,
+              fontWeight: typography.weights.bold,
+            }}
+          >
             {isFull ? 'مكتمل' : `${spotsLeft} ${spotsLeft === 1 ? 'مقعد' : 'مقاعد'}`}
           </Text>
         </View>
       </View>
 
-      <View style={styles.info}>
-        <View style={styles.infoRow}>
+      {/* Date & Time */}
+      <View style={{ marginBottom: spacing.sm }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginBottom: spacing.xs,
+          }}
+        >
           <MaterialIcons name="calendar-today" size={16} color={colors.textSecondary} />
-          <Text style={styles.infoText}>{formatDate(session.date)}</Text>
-        </View>
-        <View style={styles.infoRow}>
-          <MaterialIcons name="access-time" size={16} color={colors.textSecondary} />
-          <Text style={styles.infoText}>{session.time}</Text>
-        </View>
-      </View>
-
-      <View style={styles.info}>
-        <View style={styles.infoRow}>
-          <MaterialIcons name="location-on" size={16} color={colors.textSecondary} />
-          <Text style={styles.infoText} numberOfLines={1}>{session.location}</Text>
-        </View>
-      </View>
-
-      {session.description && (
-        <Text style={styles.description} numberOfLines={2}>
-          {session.description}
-        </Text>
-      )}
-
-      <View style={styles.footer}>
-        <View style={styles.attendees}>
-          <MaterialIcons name="people" size={18} color={colors.accent} />
-          <Text style={styles.attendeesText}>
-            {session.attendees.length} / {session.maxPlayers}
+          <Text
+            style={{
+              fontSize: typography.sizes.sm,
+              color: colors.textSecondary,
+              marginStart: spacing.xs,
+              flex: 1,
+            }}
+          >
+            {formatDate(session.date)}
           </Text>
         </View>
-        <Text style={styles.hostName}>المنظم: {session.hostName}</Text>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginBottom: spacing.xs,
+          }}
+        >
+          <MaterialIcons name="access-time" size={16} color={colors.textSecondary} />
+          <Text
+            style={{
+              fontSize: typography.sizes.sm,
+              color: colors.textSecondary,
+              marginStart: spacing.xs,
+              flex: 1,
+            }}
+          >
+            {session.time}
+          </Text>
+        </View>
+      </View>
+
+      {/* Location */}
+      <View style={{ marginBottom: spacing.sm }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginBottom: spacing.xs,
+          }}
+        >
+          <MaterialIcons name="location-on" size={16} color={colors.textSecondary} />
+          <Text
+            style={{
+              fontSize: typography.sizes.sm,
+              color: colors.textSecondary,
+              marginStart: spacing.xs,
+              flex: 1,
+            }}
+            numberOfLines={1}
+          >
+            {session.location}
+          </Text>
+        </View>
+      </View>
+
+      {/* Description */}
+      {session.description ? (
+        <Text
+          style={{
+            fontSize: typography.sizes.sm,
+            color: colors.textSecondary,
+            lineHeight: 20,
+            marginBottom: spacing.sm,
+          }}
+          numberOfLines={2}
+        >
+          {session.description}
+        </Text>
+      ) : null}
+
+      {/* Footer */}
+      <View
+        style={{
+          paddingTop: spacing.sm,
+          borderTopWidth: 1,
+          borderTopColor: colors.divider,
+        }}
+      >
+        {/* Top row: avatars + host name */}
+        <View
+          style={{
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: spacing.sm,
+          }}
+        >
+          {/* Overlapping attendee avatars */}
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            {visibleAttendees.map((attendee, index) => {
+              const bgColor = colors[AVATAR_COLORS_KEYS[index % AVATAR_COLORS_KEYS.length]];
+              return (
+                <View
+                  key={attendee.userId}
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 14,
+                    backgroundColor: bgColor,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginStart: index === 0 ? 0 : -8,
+                    borderWidth: 2,
+                    borderColor: colors.surface,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: '#FFFFFF',
+                      fontSize: 11,
+                      fontWeight: typography.weights.bold,
+                    }}
+                  >
+                    {attendee.userName.charAt(0)}
+                  </Text>
+                </View>
+              );
+            })}
+            {extraCount > 0 && (
+              <View
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 14,
+                  backgroundColor: colors.surfaceLight,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginStart: -8,
+                  borderWidth: 2,
+                  borderColor: colors.surface,
+                }}
+              >
+                <Text
+                  style={{
+                    color: colors.textSecondary,
+                    fontSize: 10,
+                    fontWeight: typography.weights.bold,
+                  }}
+                >
+                  +{extraCount}
+                </Text>
+              </View>
+            )}
+            <Text
+              style={{
+                fontSize: typography.sizes.sm,
+                fontWeight: typography.weights.semibold,
+                color: colors.accent,
+                marginStart: spacing.xs,
+              }}
+            >
+              {session.attendees.length} / {session.maxPlayers}
+            </Text>
+          </View>
+
+          <Text
+            style={{
+              fontSize: typography.sizes.xs,
+              color: colors.textLight,
+            }}
+          >
+            المنظم: {session.hostName}
+          </Text>
+        </View>
+
+        {/* Progress bar */}
+        <View
+          style={{
+            height: 3,
+            borderRadius: 2,
+            backgroundColor: colors.divider,
+            overflow: 'hidden',
+          }}
+        >
+          <View
+            style={{
+              height: 3,
+              borderRadius: 2,
+              width: `${fillPercent}%`,
+              backgroundColor: isAlmostFull ? colors.error : colors.accent,
+            }}
+          />
+        </View>
       </View>
     </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
-    padding: spacing.md,
-    marginBottom: spacing.md,
-    ...shadows.md,
-  },
-  pressed: {
-    opacity: 0.7,
-    transform: [{ scale: 0.98 }],
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: spacing.sm,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    marginRight: spacing.sm,
-  },
-  title: {
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.bold,
-    color: colors.text,
-    marginLeft: spacing.sm,
-    flex: 1,
-  },
-  badge: {
-    backgroundColor: colors.accent,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.sm,
-  },
-  badgeFull: {
-    backgroundColor: colors.textLight,
-  },
-  badgeText: {
-    color: colors.surface,
-    fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.semibold,
-  },
-  info: {
-    marginBottom: spacing.sm,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.xs,
-  },
-  infoText: {
-    fontSize: typography.sizes.sm,
-    color: colors.textSecondary,
-    marginLeft: spacing.xs,
-    flex: 1,
-  },
-  description: {
-    fontSize: typography.sizes.sm,
-    color: colors.textSecondary,
-    lineHeight: 20,
-    marginBottom: spacing.sm,
-  },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingTop: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.divider,
-  },
-  attendees: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  attendeesText: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.semibold,
-    color: colors.accent,
-    marginLeft: spacing.xs,
-  },
-  hostName: {
-    fontSize: typography.sizes.xs,
-    color: colors.textLight,
-  },
-});

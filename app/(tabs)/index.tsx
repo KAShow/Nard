@@ -1,211 +1,437 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, Pressable, RefreshControl } from 'react-native';
+import React, { useState, useMemo } from 'react';
+import { View, Text, FlatList, Pressable, RefreshControl, Animated } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useSessions } from '@/hooks/useSessions';
+import { useAuth } from '@/hooks/useAuth';
+import { useTheme } from '@/contexts/ThemeContext';
 import { SessionCard } from '@/components/SessionCard';
-import { colors, spacing, borderRadius, typography, shadows } from '@/constants/theme';
+import { spacing, borderRadius, typography } from '@/constants/theme';
 import { Session } from '@/types';
+
+function getDaysUntil(dateString: string): number {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const target = new Date(dateString);
+  target.setHours(0, 0, 0, 0);
+  const diff = target.getTime() - now.getTime();
+  return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+}
+
+function SkeletonCard({ colors }: { colors: any }) {
+  return (
+    <View
+      style={{
+        backgroundColor: colors.surfaceLight,
+        borderRadius: borderRadius.lg,
+        padding: spacing.md,
+        marginBottom: spacing.md,
+      }}
+    >
+      <View
+        style={{
+          backgroundColor: colors.border,
+          borderRadius: borderRadius.sm,
+          height: 18,
+          width: '60%',
+          marginBottom: spacing.sm,
+        }}
+      />
+      <View
+        style={{
+          backgroundColor: colors.border,
+          borderRadius: borderRadius.sm,
+          height: 14,
+          width: '80%',
+          marginBottom: spacing.sm,
+        }}
+      />
+      <View style={{ flexDirection: 'row', gap: spacing.md, marginTop: spacing.xs }}>
+        <View
+          style={{
+            backgroundColor: colors.border,
+            borderRadius: borderRadius.sm,
+            height: 14,
+            width: 80,
+          }}
+        />
+        <View
+          style={{
+            backgroundColor: colors.border,
+            borderRadius: borderRadius.sm,
+            height: 14,
+            width: 60,
+          }}
+        />
+      </View>
+    </View>
+  );
+}
+
+function FilterButton({
+  label,
+  active,
+  count,
+  colors,
+  shadows,
+  onPress,
+}: {
+  label: string;
+  active: boolean;
+  count?: number;
+  colors: any;
+  shadows: any;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      style={({ pressed }) => [
+        {
+          paddingHorizontal: spacing.lg,
+          paddingVertical: spacing.sm + 2,
+          borderRadius: borderRadius.round,
+          backgroundColor: active ? colors.primary : colors.surface,
+          borderWidth: 1.5,
+          borderColor: active ? colors.primary : colors.border,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: spacing.xs,
+          ...(active ? shadows.sm : {}),
+        },
+        pressed && { opacity: 0.7, transform: [{ scale: 0.96 }] },
+      ]}
+      onPress={onPress}
+    >
+      <Text
+        style={{
+          fontSize: typography.sizes.sm,
+          fontWeight: active ? typography.weights.bold : typography.weights.medium,
+          color: active ? colors.surface : colors.textSecondary,
+        }}
+      >
+        {label}
+      </Text>
+      {count !== undefined && count > 0 && (
+        <View
+          style={{
+            backgroundColor: active ? 'rgba(255,255,255,0.3)' : colors.surfaceLight,
+            borderRadius: borderRadius.round,
+            minWidth: 22,
+            height: 22,
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingHorizontal: spacing.xs,
+          }}
+        >
+          <Text
+            style={{
+              fontSize: typography.sizes.xs,
+              fontWeight: typography.weights.bold,
+              color: active ? colors.surface : colors.textSecondary,
+            }}
+          >
+            {count}
+          </Text>
+        </View>
+      )}
+    </Pressable>
+  );
+}
 
 export default function SessionsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { colors, shadows } = useTheme();
+  const { user } = useAuth();
   const { sessions, isLoading, refreshSessions } = useSessions();
   const [filter, setFilter] = useState<'all' | 'upcoming' | 'completed'>('all');
 
-  const filteredSessions = sessions.filter(session => {
-    if (filter === 'all') return true;
-    return session.status === filter;
-  }).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  const filteredSessions = useMemo(() => {
+    return sessions
+      .filter((session) => {
+        if (filter === 'all') return true;
+        return session.status === filter;
+      })
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  }, [sessions, filter]);
 
-  const upcomingSessions = sessions.filter(s => s.status === 'upcoming');
+  const upcomingSessions = useMemo(
+    () => sessions.filter((s) => s.status === 'upcoming'),
+    [sessions]
+  );
+  const completedSessions = useMemo(
+    () => sessions.filter((s) => s.status === 'completed'),
+    [sessions]
+  );
   const nextSession = upcomingSessions.length > 0 ? upcomingSessions[0] : null;
 
+  const daysUntilNext = nextSession ? getDaysUntil(nextSession.date) : null;
+
+  const showSkeleton = isLoading && sessions.length === 0;
+
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <View style={styles.header}>
-        <View style={styles.titleRow}>
-          <MaterialIcons name="casino" size={32} color={colors.primary} />
-          <Text style={styles.title}>نرد</Text>
+    <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: insets.top }}>
+      {/* Header */}
+      <View
+        style={{
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          paddingHorizontal: spacing.md,
+          paddingTop: spacing.md,
+          paddingBottom: spacing.sm,
+        }}
+      >
+        <View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.xs }}>
+            <MaterialIcons name="casino" size={32} color={colors.primary} />
+            <Text
+              style={{
+                fontSize: typography.sizes.title,
+                fontWeight: typography.weights.bold,
+                color: colors.text,
+                marginStart: spacing.sm,
+              }}
+            >
+              نرد
+            </Text>
+          </View>
+          {user && (
+            <Text
+              style={{
+                fontSize: typography.sizes.md,
+                fontWeight: typography.weights.medium,
+                color: colors.textSecondary,
+                marginStart: spacing.xs,
+              }}
+            >
+              مرحبا، {user.name}
+            </Text>
+          )}
         </View>
         <Pressable
           style={({ pressed }) => [
-            styles.addButton,
-            pressed && styles.addButtonPressed,
+            {
+              width: 50,
+              height: 50,
+              borderRadius: borderRadius.round,
+              backgroundColor: colors.primary,
+              justifyContent: 'center',
+              alignItems: 'center',
+              ...shadows.md,
+            },
+            pressed && { opacity: 0.8, transform: [{ scale: 0.93 }] },
           ]}
-          onPress={() => router.push('/create-session')}
+          onPress={() => router.push('/create-session' as any)}
         >
           <MaterialIcons name="add" size={28} color={colors.surface} />
         </Pressable>
       </View>
 
+      {/* Next Session Card */}
       {nextSession && (
-        <View style={styles.nextSession}>
-          <View style={styles.nextSessionHeader}>
+        <View style={{ paddingHorizontal: spacing.md, marginBottom: spacing.md }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              marginBottom: spacing.sm,
+            }}
+          >
             <MaterialIcons name="star" size={20} color={colors.secondary} />
-            <Text style={styles.nextSessionTitle}>الجلسة القادمة</Text>
+            <Text
+              style={{
+                fontSize: typography.sizes.md,
+                fontWeight: typography.weights.semibold,
+                color: colors.text,
+                marginStart: spacing.xs,
+              }}
+            >
+              الجلسة القادمة
+            </Text>
           </View>
-          <SessionCard session={nextSession} />
+          <LinearGradient
+            colors={[colors.primary + '12', colors.primaryLight + '08', 'transparent']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{
+              borderRadius: borderRadius.lg,
+              padding: 2,
+            }}
+          >
+            <View
+              style={{
+                backgroundColor: colors.surface,
+                borderRadius: borderRadius.lg - 1,
+                overflow: 'hidden',
+              }}
+            >
+              <LinearGradient
+                colors={[colors.primary + '0A', colors.primaryLight + '05', colors.surface]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0.5, y: 1 }}
+                style={{ padding: spacing.md }}
+              >
+                {daysUntilNext !== null && (
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      marginBottom: spacing.sm,
+                      gap: spacing.xs,
+                    }}
+                  >
+                    <MaterialIcons name="schedule" size={16} color={colors.primary} />
+                    <Text
+                      style={{
+                        fontSize: typography.sizes.sm,
+                        fontWeight: typography.weights.semibold,
+                        color: colors.primary,
+                      }}
+                    >
+                      {daysUntilNext === 0 ? 'اليوم!' : `بعد ${daysUntilNext} أيام`}
+                    </Text>
+                  </View>
+                )}
+                <SessionCard session={nextSession} />
+              </LinearGradient>
+            </View>
+          </LinearGradient>
         </View>
       )}
 
-      <View style={styles.filters}>
-        <FilterButton 
-          label="الكل" 
-          active={filter === 'all'} 
+      {/* Filter Buttons */}
+      <View
+        style={{
+          flexDirection: 'row',
+          paddingHorizontal: spacing.md,
+          marginBottom: spacing.md,
+          gap: spacing.sm,
+        }}
+      >
+        <FilterButton
+          label="الكل"
+          active={filter === 'all'}
+          count={sessions.length}
+          colors={colors}
+          shadows={shadows}
           onPress={() => setFilter('all')}
         />
-        <FilterButton 
-          label="القادمة" 
-          active={filter === 'upcoming'} 
+        <FilterButton
+          label="القادمة"
+          active={filter === 'upcoming'}
+          count={upcomingSessions.length}
+          colors={colors}
+          shadows={shadows}
           onPress={() => setFilter('upcoming')}
         />
-        <FilterButton 
-          label="المنتهية" 
-          active={filter === 'completed'} 
+        <FilterButton
+          label="المنتهية"
+          active={filter === 'completed'}
+          count={completedSessions.length}
+          colors={colors}
+          shadows={shadows}
           onPress={() => setFilter('completed')}
         />
       </View>
 
-      <FlatList
-        data={filteredSessions}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <SessionCard session={item} />}
-        contentContainerStyle={styles.list}
-        refreshControl={
-          <RefreshControl
-            refreshing={isLoading}
-            onRefresh={refreshSessions}
-            tintColor={colors.primary}
-          />
-        }
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            <MaterialIcons name="event-busy" size={64} color={colors.textLight} />
-            <Text style={styles.emptyText}>لا توجد جلسات</Text>
-            <Text style={styles.emptySubtext}>ابدأ بإنشاء جلسة جديدة</Text>
-          </View>
-        }
-      />
+      {/* Sessions List */}
+      {showSkeleton ? (
+        <View style={{ paddingHorizontal: spacing.md, paddingTop: spacing.sm }}>
+          <SkeletonCard colors={colors} />
+          <SkeletonCard colors={colors} />
+          <SkeletonCard colors={colors} />
+        </View>
+      ) : (
+        <FlatList
+          data={filteredSessions}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => <SessionCard session={item} />}
+          contentContainerStyle={{
+            paddingHorizontal: spacing.md,
+            paddingBottom: spacing.lg + insets.bottom,
+          }}
+          refreshControl={
+            <RefreshControl
+              refreshing={isLoading}
+              onRefresh={refreshSessions}
+              tintColor={colors.primary}
+              colors={[colors.primary]}
+            />
+          }
+          ListEmptyComponent={
+            <View
+              style={{
+                alignItems: 'center',
+                justifyContent: 'center',
+                paddingVertical: spacing.xxl + spacing.xl,
+              }}
+            >
+              <View
+                style={{
+                  width: 120,
+                  height: 120,
+                  borderRadius: borderRadius.round,
+                  backgroundColor: colors.surfaceLight,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: spacing.lg,
+                }}
+              >
+                <MaterialIcons name="event-busy" size={80} color={colors.textLight} />
+              </View>
+              <Text
+                style={{
+                  fontSize: typography.sizes.xl,
+                  fontWeight: typography.weights.bold,
+                  color: colors.textSecondary,
+                  marginBottom: spacing.xs,
+                }}
+              >
+                لا توجد جلسات
+              </Text>
+              <Text
+                style={{
+                  fontSize: typography.sizes.sm,
+                  color: colors.textLight,
+                  marginBottom: spacing.lg,
+                }}
+              >
+                ابدأ بإنشاء جلسة جديدة
+              </Text>
+              <Pressable
+                style={({ pressed }) => [
+                  {
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: spacing.sm,
+                    backgroundColor: colors.primary,
+                    paddingHorizontal: spacing.xl,
+                    paddingVertical: spacing.md,
+                    borderRadius: borderRadius.round,
+                    ...shadows.md,
+                  },
+                  pressed && { opacity: 0.85, transform: [{ scale: 0.96 }] },
+                ]}
+                onPress={() => router.push('/create-session' as any)}
+              >
+                <MaterialIcons name="add-circle-outline" size={22} color={colors.surface} />
+                <Text
+                  style={{
+                    fontSize: typography.sizes.md,
+                    fontWeight: typography.weights.bold,
+                    color: colors.surface,
+                  }}
+                >
+                  إنشاء جلسة
+                </Text>
+              </Pressable>
+            </View>
+          }
+        />
+      )}
     </View>
   );
 }
-
-function FilterButton({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
-  return (
-    <Pressable
-      style={({ pressed }) => [
-        styles.filterButton,
-        active && styles.filterButtonActive,
-        pressed && styles.filterButtonPressed,
-      ]}
-      onPress={onPress}
-    >
-      <Text style={[styles.filterText, active && styles.filterTextActive]}>
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: typography.sizes.title,
-    fontWeight: typography.weights.bold,
-    color: colors.text,
-    marginLeft: spacing.sm,
-  },
-  addButton: {
-    width: 48,
-    height: 48,
-    borderRadius: borderRadius.round,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...shadows.md,
-  },
-  addButtonPressed: {
-    opacity: 0.8,
-    transform: [{ scale: 0.95 }],
-  },
-  nextSession: {
-    paddingHorizontal: spacing.md,
-    marginBottom: spacing.md,
-  },
-  nextSessionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  nextSessionTitle: {
-    fontSize: typography.sizes.md,
-    fontWeight: typography.weights.semibold,
-    color: colors.text,
-    marginLeft: spacing.xs,
-  },
-  filters: {
-    flexDirection: 'row',
-    paddingHorizontal: spacing.md,
-    marginBottom: spacing.md,
-    gap: spacing.sm,
-  },
-  filterButton: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.round,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  filterButtonActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  filterButtonPressed: {
-    opacity: 0.7,
-  },
-  filterText: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.medium,
-    color: colors.textSecondary,
-  },
-  filterTextActive: {
-    color: colors.surface,
-  },
-  list: {
-    paddingHorizontal: spacing.md,
-    paddingBottom: spacing.md,
-  },
-  empty: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.xxl,
-  },
-  emptyText: {
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.semibold,
-    color: colors.textSecondary,
-    marginTop: spacing.md,
-  },
-  emptySubtext: {
-    fontSize: typography.sizes.sm,
-    color: colors.textLight,
-    marginTop: spacing.xs,
-  },
-});

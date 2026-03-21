@@ -1,41 +1,91 @@
-export const colors = {
+export type ColorScheme = 'light' | 'dark';
+
+export type ThemeColors = typeof lightColors;
+
+const lightColors = {
   // Primary - ألوان النرد المرحة
   primary: '#FF6B35',      // برتقالي دافئ
   primaryDark: '#E85A2A',
   primaryLight: '#FF8F66',
-  
+
   // Secondary
   secondary: '#FFD23F',    // أصفر ذهبي
   secondaryDark: '#E6BC38',
-  
+
   // Accent
   accent: '#3BCEAC',       // تركواز
   accentDark: '#2FB896',
-  
+
   // Background
   background: '#FFF8F0',   // كريمي فاتح
   surface: '#FFFFFF',
   surfaceLight: '#FFF5EB',
-  
+
   // Text
   text: '#2D3436',
   textSecondary: '#636E72',
   textLight: '#B2BEC3',
-  
+
   // Status
   success: '#00B894',
   error: '#D63031',
   warning: '#FDCB6E',
   info: '#74B9FF',
-  
+
   // Borders & Dividers
   border: '#DFE6E9',
   divider: '#F0F3F4',
-  
+
   // Special
   badge: '#6C5CE7',
   dice: '#A29BFE',
 };
+
+const darkColors: ThemeColors = {
+  // Primary - نفس الألوان الأساسية مع سطوع أعلى
+  primary: '#FF7F50',
+  primaryDark: '#FF6B35',
+  primaryLight: '#FFA07A',
+
+  // Secondary
+  secondary: '#FFD23F',
+  secondaryDark: '#E6BC38',
+
+  // Accent
+  accent: '#4EDDC0',
+  accentDark: '#3BCEAC',
+
+  // Background
+  background: '#121218',
+  surface: '#1E1E2A',
+  surfaceLight: '#2A2A3A',
+
+  // Text
+  text: '#EAEAEA',
+  textSecondary: '#A0A0B0',
+  textLight: '#606070',
+
+  // Status
+  success: '#00D2A0',
+  error: '#FF6B6B',
+  warning: '#FDCB6E',
+  info: '#74B9FF',
+
+  // Borders & Dividers
+  border: '#2A2A3E',
+  divider: '#1E1E32',
+
+  // Special
+  badge: '#7C6CF7',
+  dice: '#B2ABFE',
+};
+
+export function getColors(scheme: ColorScheme): ThemeColors {
+  return scheme === 'dark' ? darkColors : lightColors;
+}
+
+// Default export for backward compatibility during migration
+export const colors = lightColors;
 
 export const spacing = {
   xs: 4,
@@ -73,26 +123,33 @@ export const typography = {
   },
 };
 
-export const shadows = {
-  sm: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  md: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  lg: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-};
+export function getShadows(scheme: ColorScheme) {
+  const shadowColor = scheme === 'dark' ? '#000' : '#000';
+  const base = scheme === 'dark' ? 0.3 : 1;
+  return {
+    sm: {
+      shadowColor,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05 * base,
+      shadowRadius: 2,
+      elevation: 2,
+    },
+    md: {
+      shadowColor,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1 * base,
+      shadowRadius: 4,
+      elevation: 3,
+    },
+    lg: {
+      shadowColor,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.15 * base,
+      shadowRadius: 8,
+      elevation: 5,
+    },
+  };
+}
+
+// Default shadows for backward compatibility
+export const shadows = getShadows('light');

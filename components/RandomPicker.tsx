@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Pressable, Animated } from 'react-native';
+import { View, Text, Pressable, Animated } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { colors, spacing, borderRadius, typography, shadows } from '@/constants/theme';
+import { spacing, borderRadius, typography } from '@/constants/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface RandomPickerProps {
   items: string[];
@@ -10,6 +11,7 @@ interface RandomPickerProps {
 }
 
 export function RandomPicker({ items, onPick, title = 'اختر عشوائياً' }: RandomPickerProps) {
+  const { colors, shadows } = useTheme();
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
   const [isSpinning, setIsSpinning] = useState(false);
   const [spinAnim] = useState(new Animated.Value(0));
@@ -39,82 +41,62 @@ export function RandomPicker({ items, onPick, title = 'اختر عشوائياً
   });
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>{title}</Text>
-      
+    <View style={{ alignItems: 'center', padding: spacing.lg }}>
+      <Text style={{
+        fontSize: typography.sizes.lg,
+        fontWeight: typography.weights.semibold,
+        color: colors.text,
+        marginBottom: spacing.md,
+      }}>{title}</Text>
+
       <Pressable
         onPress={handleSpin}
         disabled={isSpinning || items.length === 0}
-        style={({ pressed }) => [
-          styles.diceButton,
-          (pressed && !isSpinning) && styles.pressed,
-          (isSpinning || items.length === 0) && styles.disabled,
+        style={({ pressed }) => [{
+          width: 120,
+          height: 120,
+          borderRadius: borderRadius.round,
+          backgroundColor: colors.dice,
+          justifyContent: 'center',
+          alignItems: 'center',
+          ...shadows.lg,
+        },
+        (pressed && !isSpinning) && { opacity: 0.8, transform: [{ scale: 0.95 }] },
+        (isSpinning || items.length === 0) && { opacity: 0.5 },
         ]}
       >
         <Animated.View style={{ transform: [{ rotate: spin }] }}>
-          <MaterialIcons name="casino" size={64} color={colors.surface} />
+          <MaterialIcons name="casino" size={64} color="#FFFFFF" />
         </Animated.View>
       </Pressable>
 
       {selectedItem && !isSpinning && (
-        <View style={styles.result}>
+        <View style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          marginTop: spacing.lg,
+          backgroundColor: colors.surfaceLight,
+          paddingHorizontal: spacing.lg,
+          paddingVertical: spacing.md,
+          borderRadius: borderRadius.lg,
+        }}>
           <MaterialIcons name="star" size={24} color={colors.secondary} />
-          <Text style={styles.resultText}>{selectedItem}</Text>
+          <Text style={{
+            fontSize: typography.sizes.xl,
+            fontWeight: typography.weights.bold,
+            color: colors.text,
+            marginStart: spacing.sm,
+          }}>{selectedItem}</Text>
         </View>
       )}
 
       {items.length === 0 && (
-        <Text style={styles.emptyText}>لا يوجد عناصر للاختيار</Text>
+        <Text style={{
+          marginTop: spacing.md,
+          fontSize: typography.sizes.sm,
+          color: colors.textLight,
+        }}>لا يوجد عناصر للاختيار</Text>
       )}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    alignItems: 'center',
-    padding: spacing.lg,
-  },
-  title: {
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.semibold,
-    color: colors.text,
-    marginBottom: spacing.md,
-  },
-  diceButton: {
-    width: 120,
-    height: 120,
-    borderRadius: borderRadius.round,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...shadows.lg,
-  },
-  pressed: {
-    opacity: 0.8,
-    transform: [{ scale: 0.95 }],
-  },
-  disabled: {
-    opacity: 0.5,
-  },
-  result: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: spacing.lg,
-    backgroundColor: colors.surfaceLight,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderRadius: borderRadius.lg,
-  },
-  resultText: {
-    fontSize: typography.sizes.xl,
-    fontWeight: typography.weights.bold,
-    color: colors.text,
-    marginLeft: spacing.sm,
-  },
-  emptyText: {
-    marginTop: spacing.md,
-    fontSize: typography.sizes.sm,
-    color: colors.textLight,
-  },
-});
