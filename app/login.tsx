@@ -1,51 +1,285 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, TextInput, Pressable, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
 import { colors, spacing, borderRadius, typography, shadows } from '@/constants/theme';
 import { useAlert } from '@/template';
 
+type ViewMode = 'initial' | 'login' | 'signup' | 'otp';
+
 export default function LoginScreen() {
-  const [name, setName] = useState('');
-  const { login } = useAuth();
+  const [viewMode, setViewMode] = useState<ViewMode>('initial');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [otp, setOtp] = useState('');
+  const { signInWithPassword, signUpWithPassword, sendOTP, verifyOTPAndLogin, operationLoading } = useAuth();
   const router = useRouter();
   const { showAlert } = useAlert();
 
   const handleLogin = async () => {
-    if (!name.trim()) {
-      showAlert('تنبيه', 'الرجاء إدخال اسمك');
+    if (!email.trim() || !password.trim()) {
+      showAlert('تنبيه', 'الرجاء إدخال البريد الإلكتروني وكلمة المرور');
       return;
     }
 
-    await login(name.trim());
+    const { error } = await signInWithPassword(email.trim(), password);
+    if (error) {
+      showAlert('خطأ', error);
+      return;
+    }
+
     router.replace('/(tabs)');
   };
 
+  const handleSignupSendOTP = async () => {
+    if (!email.trim()) {
+      showAlert('تنبيه', 'الرجاء إدخال البريد الإلكتروني');
+      return;
+    }
+
+    if (!password.trim() || password.length < 6) {
+      showAlert('تنبيه', 'كلمة المرور يجب أن تكون 6 أحرف على الأقل');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      showAlert('تنبيه', 'كلمات المرور غير متطابقة');
+      return;
+    }
+
+    const { error } = await sendOTP(email.trim());
+    if (error) {
+      showAlert('خطأ', error);
+      return;
+    }
+
+    setViewMode('otp');
+    showAlert('تم', 'تم إرسال رمز التحقق إلى بريدك الإلكتروني');
+  };
+
+  const handleVerifyOTP = async () => {
+    if (!otp.trim() || otp.length !== 4) {
+      showAlert('تنبيه', 'الرجاء إدخال رمز التحقق المكون من 4 أرقام');
+      return;
+    }
+
+    const { error } = await verifyOTPAndLogin(email.trim(), otp, { password });
+    if (error) {
+      showAlert('خطأ', error);
+      return;
+    }
+
+    router.replace('/(tabs)');
+  };
+
+  if (viewMode === 'initial') {
+    return (
+      <View style={styles.container}>
+        <View style={styles.content}>
+          <View style={styles.header}>
+            <MaterialIcons name="casino" size={80} color={colors.primary} />
+            <Text style={styles.title}>نرد</Text>
+            <Text style={styles.subtitle}>منظم جلسات الألعاب اللوحية</Text>
+          </View>
+
+          <View style={styles.buttonGroup}>
+            <Pressable
+              style={({ pressed }) => [
+                styles.button,
+                pressed && styles.buttonPressed,
+              ]}
+              onPress={() => setViewMode('login')}
+            >
+              <Text style={styles.buttonText}>تسجيل الدخول</Text>
+            </Pressable>
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.buttonSecondary,
+                pressed && styles.buttonPressed,
+              ]}
+              onPress={() => setViewMode('signup')}
+            >
+              <Text style={styles.buttonSecondaryText}>إنشاء حساب جديد</Text>
+            </Pressable>
+          </View>
+
+          <View style={styles.features}>
+            <FeatureItem icon="group" text="نظم جلساتك مع أصدقائك" />
+            <FeatureItem icon="videogame-asset" text="شارك ألعابك المفضلة" />
+            <FeatureItem icon="emoji-events" text="اجمع النقاط والألقاب" />
+          </View>
+        </View>
+      </View>
+    );
+  }
+
+  if (viewMode === 'login') {
+    return (
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.container}
+      >
+        <View style={styles.content}>
+          <Pressable onPress={() => setViewMode('initial')} style={styles.backButton}>
+            <MaterialIcons name="arrow-forward" size={24} color={colors.text} />
+          </Pressable>
+
+          <View style={styles.header}>
+            <MaterialIcons name="casino" size={60} color={colors.primary} />
+            <Text style={styles.title}>تسجيل الدخول</Text>
+          </View>
+
+          <View style={styles.form}>
+            <View style={styles.inputContainer}>
+              <MaterialIcons name="email" size={24} color={colors.textSecondary} />
+              <TextInput
+                style={styles.input}
+                placeholder="البريد الإلكتروني"
+                placeholderTextColor={colors.textLight}
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <MaterialIcons name="lock" size={24} color={colors.textSecondary} />
+              <TextInput
+                style={styles.input}
+                placeholder="كلمة المرور"
+                placeholderTextColor={colors.textLight}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+              />
+            </View>
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.button,
+                pressed && styles.buttonPressed,
+              ]}
+              onPress={handleLogin}
+              disabled={operationLoading}
+            >
+              {operationLoading ? (
+                <ActivityIndicator color={colors.surface} />
+              ) : (
+                <Text style={styles.buttonText}>دخول</Text>
+              )}
+            </Pressable>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    );
+  }
+
+  if (viewMode === 'signup') {
+    return (
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.container}
+      >
+        <View style={styles.content}>
+          <Pressable onPress={() => setViewMode('initial')} style={styles.backButton}>
+            <MaterialIcons name="arrow-forward" size={24} color={colors.text} />
+          </Pressable>
+
+          <View style={styles.header}>
+            <MaterialIcons name="casino" size={60} color={colors.primary} />
+            <Text style={styles.title}>إنشاء حساب</Text>
+          </View>
+
+          <View style={styles.form}>
+            <View style={styles.inputContainer}>
+              <MaterialIcons name="email" size={24} color={colors.textSecondary} />
+              <TextInput
+                style={styles.input}
+                placeholder="البريد الإلكتروني"
+                placeholderTextColor={colors.textLight}
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <MaterialIcons name="lock" size={24} color={colors.textSecondary} />
+              <TextInput
+                style={styles.input}
+                placeholder="كلمة المرور (6 أحرف على الأقل)"
+                placeholderTextColor={colors.textLight}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <MaterialIcons name="lock" size={24} color={colors.textSecondary} />
+              <TextInput
+                style={styles.input}
+                placeholder="تأكيد كلمة المرور"
+                placeholderTextColor={colors.textLight}
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry
+              />
+            </View>
+
+            <Pressable
+              style={({ pressed }) => [
+                styles.button,
+                pressed && styles.buttonPressed,
+              ]}
+              onPress={handleSignupSendOTP}
+              disabled={operationLoading}
+            >
+              {operationLoading ? (
+                <ActivityIndicator color={colors.surface} />
+              ) : (
+                <Text style={styles.buttonText}>إرسال رمز التحقق</Text>
+              )}
+            </Pressable>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    );
+  }
+
+  // OTP view
   return (
     <KeyboardAvoidingView 
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
       <View style={styles.content}>
+        <Pressable onPress={() => setViewMode('signup')} style={styles.backButton}>
+          <MaterialIcons name="arrow-forward" size={24} color={colors.text} />
+        </Pressable>
+
         <View style={styles.header}>
-          <MaterialIcons name="casino" size={80} color={colors.primary} />
-          <Text style={styles.title}>نرد</Text>
-          <Text style={styles.subtitle}>منظم جلسات الألعاب اللوحية</Text>
+          <MaterialIcons name="verified-user" size={60} color={colors.accent} />
+          <Text style={styles.title}>التحقق من البريد</Text>
+          <Text style={styles.subtitle}>أدخل الرمز المرسل إلى {email}</Text>
         </View>
 
         <View style={styles.form}>
           <View style={styles.inputContainer}>
-            <MaterialIcons name="person" size={24} color={colors.textSecondary} />
+            <MaterialIcons name="lock" size={24} color={colors.textSecondary} />
             <TextInput
               style={styles.input}
-              placeholder="أدخل اسمك"
+              placeholder="رمز التحقق (4 أرقام)"
               placeholderTextColor={colors.textLight}
-              value={name}
-              onChangeText={setName}
-              autoCapitalize="words"
-              returnKeyType="done"
-              onSubmitEditing={handleLogin}
+              value={otp}
+              onChangeText={setOtp}
+              keyboardType="number-pad"
+              maxLength={4}
             />
           </View>
 
@@ -54,24 +288,23 @@ export default function LoginScreen() {
               styles.button,
               pressed && styles.buttonPressed,
             ]}
-            onPress={handleLogin}
+            onPress={handleVerifyOTP}
+            disabled={operationLoading}
           >
-            <Text style={styles.buttonText}>ابدأ</Text>
-            <MaterialIcons name="arrow-back" size={24} color={colors.surface} />
+            {operationLoading ? (
+              <ActivityIndicator color={colors.surface} />
+            ) : (
+              <Text style={styles.buttonText}>تأكيد</Text>
+            )}
           </Pressable>
 
-          <View style={styles.infoBox}>
-            <MaterialIcons name="info" size={20} color={colors.accent} />
-            <Text style={styles.infoText}>
-              هذا تسجيل دخول تجريبي - لا تحتاج لكلمة مرور
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.features}>
-          <FeatureItem icon="group" text="نظم جلساتك مع أصدقائك" />
-          <FeatureItem icon="videogame-asset" text="شارك ألعابك المفضلة" />
-          <FeatureItem icon="emoji-events" text="اجمع النقاط والألقاب" />
+          <Pressable
+            style={styles.linkButton}
+            onPress={handleSignupSendOTP}
+            disabled={operationLoading}
+          >
+            <Text style={styles.linkText}>إعادة إرسال الرمز</Text>
+          </Pressable>
         </View>
       </View>
     </KeyboardAvoidingView>
@@ -97,6 +330,12 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     justifyContent: 'center',
   },
+  backButton: {
+    position: 'absolute',
+    top: spacing.xl,
+    right: spacing.md,
+    padding: spacing.sm,
+  },
   header: {
     alignItems: 'center',
     marginBottom: spacing.xxl,
@@ -111,6 +350,7 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.md,
     color: colors.textSecondary,
     marginTop: spacing.xs,
+    textAlign: 'center',
   },
   form: {
     marginBottom: spacing.xl,
@@ -132,15 +372,29 @@ const styles = StyleSheet.create({
     marginLeft: spacing.sm,
     textAlign: 'right',
   },
+  buttonGroup: {
+    marginBottom: spacing.xl,
+  },
   button: {
-    flexDirection: 'row',
     backgroundColor: colors.primary,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
     borderRadius: borderRadius.md,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: spacing.sm,
     ...shadows.md,
+  },
+  buttonSecondary: {
+    backgroundColor: colors.surface,
+    borderWidth: 2,
+    borderColor: colors.primary,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.sm,
   },
   buttonPressed: {
     opacity: 0.8,
@@ -150,21 +404,20 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.lg,
     fontWeight: typography.weights.bold,
     color: colors.surface,
-    marginRight: spacing.sm,
   },
-  infoBox: {
-    flexDirection: 'row',
+  buttonSecondaryText: {
+    fontSize: typography.sizes.lg,
+    fontWeight: typography.weights.bold,
+    color: colors.primary,
+  },
+  linkButton: {
     alignItems: 'center',
-    backgroundColor: colors.surfaceLight,
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
     marginTop: spacing.md,
   },
-  infoText: {
-    fontSize: typography.sizes.sm,
-    color: colors.textSecondary,
-    marginLeft: spacing.sm,
-    flex: 1,
+  linkText: {
+    fontSize: typography.sizes.md,
+    color: colors.accent,
+    textDecorationLine: 'underline',
   },
   features: {
     gap: spacing.md,
