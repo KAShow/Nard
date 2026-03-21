@@ -75,14 +75,12 @@ function FilterButton({
   active,
   count,
   colors,
-  shadows,
   onPress,
 }: {
   label: string;
   active: boolean;
   count?: number;
   colors: any;
-  shadows: any;
   onPress: () => void;
 }) {
   return (
@@ -98,7 +96,6 @@ function FilterButton({
           flexDirection: 'row',
           alignItems: 'center',
           gap: spacing.xs,
-          ...(active ? shadows.sm : {}),
         },
         pressed && { opacity: 0.7, transform: [{ scale: 0.96 }] },
       ]}
@@ -316,7 +313,6 @@ export default function SessionsScreen() {
           active={filter === 'all'}
           count={sessions.length}
           colors={colors}
-          shadows={shadows}
           onPress={() => setFilter('all')}
         />
         <FilterButton
@@ -324,7 +320,6 @@ export default function SessionsScreen() {
           active={filter === 'upcoming'}
           count={upcomingSessions.length}
           colors={colors}
-          shadows={shadows}
           onPress={() => setFilter('upcoming')}
         />
         <FilterButton
@@ -332,7 +327,6 @@ export default function SessionsScreen() {
           active={filter === 'completed'}
           count={completedSessions.length}
           colors={colors}
-          shadows={shadows}
           onPress={() => setFilter('completed')}
         />
       </View>
