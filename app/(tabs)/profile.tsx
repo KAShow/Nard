@@ -1,14 +1,17 @@
-import React from 'react';
-import { View, Text, ScrollView, Pressable } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, ScrollView, Pressable, TextInput } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '@/hooks/useAuth';
 import { useSessions } from '@/hooks/useSessions';
 import { useTheme } from '@/contexts/ThemeContext';
 import { spacing, borderRadius, typography } from '@/constants/theme';
 import { BadgeInfo } from '@/types';
+
+const BGG_USERNAME_KEY = '@nard_bgg_username';
 
 const BADGES: BadgeInfo[] = [
   { id: 'king', name: 'ملك البورد جيمز', emoji: '👑', description: 'أحضر 10 ألعاب مختلفة' },
@@ -30,6 +33,29 @@ export default function ProfileScreen() {
   const { user, logout } = useAuth();
   const { sessions } = useSessions();
   const { colors, shadows, isDark, toggleTheme } = useTheme();
+
+  const [bggUsername, setBggUsername] = useState('');
+  const [bggSaved, setBggSaved] = useState(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem(BGG_USERNAME_KEY).then((val) => {
+      if (val) {
+        setBggUsername(val);
+        setBggSaved(true);
+      }
+    });
+  }, []);
+
+  const saveBggUsername = async () => {
+    const trimmed = bggUsername.trim();
+    if (trimmed) {
+      await AsyncStorage.setItem(BGG_USERNAME_KEY, trimmed);
+      setBggSaved(true);
+    } else {
+      await AsyncStorage.removeItem(BGG_USERNAME_KEY);
+      setBggSaved(false);
+    }
+  };
 
   if (!user) return null;
 
@@ -242,6 +268,74 @@ export default function ProfileScreen() {
             );
           })}
         </View>
+      </View>
+
+      {/* BGG Account */}
+      <View style={{ marginHorizontal: spacing.md, marginBottom: spacing.xl }}>
+        <Text
+          style={{
+            fontSize: typography.sizes.lg,
+            fontWeight: typography.weights.semibold,
+            color: colors.text,
+            marginBottom: spacing.md,
+          }}
+        >
+          حساب BoardGameGeek
+        </Text>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: spacing.sm,
+          }}
+        >
+          <TextInput
+            style={{
+              flex: 1,
+              backgroundColor: colors.surface,
+              borderRadius: borderRadius.md,
+              paddingHorizontal: spacing.md,
+              paddingVertical: spacing.sm + 2,
+              fontSize: typography.sizes.md,
+              color: colors.text,
+              borderWidth: 1,
+              borderColor: bggSaved ? colors.success : colors.border,
+              textAlign: 'left',
+            }}
+            placeholder="BGG Username"
+            placeholderTextColor={colors.textLight}
+            value={bggUsername}
+            onChangeText={(t) => { setBggUsername(t); setBggSaved(false); }}
+            autoCapitalize="none"
+          />
+          <Pressable
+            style={({ pressed }) => ({
+              backgroundColor: bggSaved ? colors.success : colors.primary,
+              paddingHorizontal: spacing.md,
+              paddingVertical: spacing.sm + 2,
+              borderRadius: borderRadius.md,
+              opacity: pressed ? 0.7 : 1,
+            })}
+            onPress={saveBggUsername}
+          >
+            <MaterialIcons
+              name={bggSaved ? 'check' : 'save'}
+              size={22}
+              color="#FFFFFF"
+            />
+          </Pressable>
+        </View>
+        {bggSaved && (
+          <Text
+            style={{
+              fontSize: typography.sizes.xs,
+              color: colors.success,
+              marginTop: spacing.xs,
+            }}
+          >
+            تم الحفظ — يمكنك اختيار ألعابك عند الانضمام لجلسة
+          </Text>
+        )}
       </View>
 
       {/* Logout */}

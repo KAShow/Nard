@@ -42,6 +42,15 @@ export type Badge =
   | 'savior'        // المنقذ
   | 'veteran';      // محترف الجلسات
 
+export interface BGGGame {
+  id: string;
+  name: string;
+  thumbnail?: string;
+  minPlayers: number;
+  maxPlayers: number;
+  avgRating: number;
+}
+
 export interface BadgeInfo {
   id: Badge;
   name: string;

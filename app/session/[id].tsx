@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '@/hooks/useAuth';
 import { useSessions } from '@/hooks/useSessions';
 import { RandomPicker } from '@/components/RandomPicker';
+import { BGGGamePicker } from '@/components/BGGGamePicker';
 import { spacing, borderRadius, typography } from '@/constants/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAlert } from '@/template';
@@ -29,6 +30,7 @@ export default function SessionDetailScreen() {
   const [gameBrought, setGameBrought] = useState('');
   const [snackBrought, setSnackBrought] = useState('');
   const [showPickerModal, setShowPickerModal] = useState(false);
+  const [showBGGPicker, setShowBGGPicker] = useState(false);
 
   const session = sessions.find(s => s.id === id);
 
@@ -478,23 +480,39 @@ export default function SessionDetailScreen() {
                 color: colors.text,
                 marginBottom: spacing.xs,
               }}>وش بتجيب معك؟ (اللعبة)</Text>
-              <TextInput
-                style={{
-                  backgroundColor: colors.background,
-                  borderRadius: borderRadius.md,
-                  paddingHorizontal: spacing.md,
-                  paddingVertical: spacing.sm + 2,
-                  fontSize: typography.sizes.md,
-                  color: colors.text,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  textAlign: 'right',
-                }}
-                placeholder="مثال: كاتان، مونوبولي"
-                placeholderTextColor={colors.textLight}
-                value={gameBrought}
-                onChangeText={setGameBrought}
-              />
+              <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                <TextInput
+                  style={{
+                    flex: 1,
+                    backgroundColor: colors.background,
+                    borderRadius: borderRadius.md,
+                    paddingHorizontal: spacing.md,
+                    paddingVertical: spacing.sm + 2,
+                    fontSize: typography.sizes.md,
+                    color: colors.text,
+                    borderWidth: 1,
+                    borderColor: colors.border,
+                    textAlign: 'right',
+                  }}
+                  placeholder="مثال: كاتان، مونوبولي"
+                  placeholderTextColor={colors.textLight}
+                  value={gameBrought}
+                  onChangeText={setGameBrought}
+                />
+                <Pressable
+                  style={({ pressed }) => ({
+                    backgroundColor: colors.accent,
+                    borderRadius: borderRadius.md,
+                    paddingHorizontal: spacing.md,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    opacity: pressed ? 0.7 : 1,
+                  })}
+                  onPress={() => setShowBGGPicker(true)}
+                >
+                  <MaterialIcons name="search" size={22} color="#FFFFFF" />
+                </Pressable>
+              </View>
             </View>
 
             <View style={{ marginBottom: spacing.lg }}>
@@ -613,6 +631,14 @@ export default function SessionDetailScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* BGG Game Picker */}
+      <BGGGamePicker
+        visible={showBGGPicker}
+        onClose={() => setShowBGGPicker(false)}
+        onSelect={(name) => setGameBrought(name)}
+        playerCount={session.attendees.length + 1}
+      />
     </ScrollView>
   );
 }
