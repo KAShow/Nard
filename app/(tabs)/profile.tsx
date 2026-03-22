@@ -73,7 +73,6 @@ export default function ProfileScreen() {
       style={{
         flex: 1,
         backgroundColor: colors.background,
-        paddingTop: insets.top,
       }}
       contentContainerStyle={{ paddingBottom: spacing.xxl }}
     >
@@ -82,7 +81,7 @@ export default function ProfileScreen() {
         colors={[colors.primaryLight + '26', colors.background]}
         style={{
           alignItems: 'center',
-          paddingTop: spacing.xl,
+          paddingTop: insets.top + spacing.xl,
           paddingBottom: spacing.lg,
           paddingHorizontal: spacing.md,
         }}
