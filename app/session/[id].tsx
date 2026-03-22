@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, Pressable, TextInput, Modal } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -31,6 +32,17 @@ export default function SessionDetailScreen() {
   const [snackBrought, setSnackBrought] = useState('');
   const [showPickerModal, setShowPickerModal] = useState(false);
   const [showBGGPicker, setShowBGGPicker] = useState(false);
+
+  // Auto-open BGG picker when join modal opens if user has BGG account
+  useEffect(() => {
+    if (showJoinModal) {
+      AsyncStorage.getItem('@nard_bgg_username').then((val) => {
+        if (val) {
+          setShowBGGPicker(true);
+        }
+      });
+    }
+  }, [showJoinModal]);
 
   const session = sessions.find(s => s.id === id);
 
