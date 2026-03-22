@@ -32,7 +32,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  // Load sessions when user changes
+  // Load sessions when user changes (use user.id for stable reference)
   useEffect(() => {
     if (user) {
       loadSessions();
@@ -40,7 +40,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       setSessions([]);
       setIsLoading(false);
     }
-  }, [user]);
+  }, [user?.id]);
 
   const createSession = async (sessionData: Omit<Session, 'id' | 'attendees' | 'ratings' | 'createdAt'>) => {
     try {
