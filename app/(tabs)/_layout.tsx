@@ -42,7 +42,7 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        sceneStyle: { paddingBottom: sceneBottomPadding },
+        sceneStyle: { paddingBottom: sceneBottomPadding, backgroundColor: colors.background },
       }}
       tabBar={({ state, navigation }) => {
         return (

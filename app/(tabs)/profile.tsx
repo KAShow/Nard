@@ -73,6 +73,7 @@ export default function ProfileScreen() {
       style={{
         flex: 1,
         backgroundColor: colors.background,
+        paddingTop: insets.top,
       }}
       contentContainerStyle={{ paddingBottom: spacing.xxl }}
     >
@@ -81,7 +82,7 @@ export default function ProfileScreen() {
         colors={[colors.primaryLight + '26', colors.background]}
         style={{
           alignItems: 'center',
-          paddingTop: insets.top + spacing.xl,
+          paddingTop: spacing.xl,
           paddingBottom: spacing.lg,
           paddingHorizontal: spacing.md,
         }}
@@ -91,7 +92,7 @@ export default function ProfileScreen() {
           onPress={toggleTheme}
           style={({ pressed }) => ({
             position: 'absolute',
-            top: spacing.md,
+            top: insets.top + spacing.md,
             left: spacing.md,
             width: 40,
             height: 40,
