@@ -38,9 +38,15 @@ export default function SessionDetailScreen() {
     if (showJoinModal) {
       AsyncStorage.getItem('@nard_bgg_username').then((val) => {
         if (val) {
-          setShowBGGPicker(true);
+          // Delay to ensure modal is fully rendered
+          setTimeout(() => {
+            setShowBGGPicker(true);
+          }, 300);
         }
       });
+    } else {
+      // Reset BGG picker when modal closes
+      setShowBGGPicker(false);
     }
   }, [showJoinModal]);
 
@@ -486,45 +492,50 @@ export default function SessionDetailScreen() {
             }}>تأكيد الحضور</Text>
 
             <View style={{ marginBottom: spacing.md }}>
-              <Text style={{
-                fontSize: typography.sizes.sm,
-                fontWeight: typography.weights.semibold,
-                color: colors.text,
-                marginBottom: spacing.xs,
-              }}>وش بتجيب معك؟ (اللعبة)</Text>
-              <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-                <TextInput
-                  style={{
-                    flex: 1,
-                    backgroundColor: colors.background,
-                    borderRadius: borderRadius.md,
-                    paddingHorizontal: spacing.md,
-                    paddingVertical: spacing.sm + 2,
-                    fontSize: typography.sizes.md,
-                    color: colors.text,
-                    borderWidth: 1,
-                    borderColor: colors.border,
-                    textAlign: 'right',
-                  }}
-                  placeholder="مثال: كاتان، مونوبولي"
-                  placeholderTextColor={colors.textLight}
-                  value={gameBrought}
-                  onChangeText={setGameBrought}
-                />
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.xs }}>
+                <Text style={{
+                  fontSize: typography.sizes.sm,
+                  fontWeight: typography.weights.semibold,
+                  color: colors.text,
+                }}>وش بتجيب معك؟ (اللعبة)</Text>
                 <Pressable
                   style={({ pressed }) => ({
-                    backgroundColor: colors.accent,
-                    borderRadius: borderRadius.md,
-                    paddingHorizontal: spacing.md,
-                    justifyContent: 'center',
+                    flexDirection: 'row',
                     alignItems: 'center',
+                    gap: spacing.xs,
+                    backgroundColor: colors.accent + '15',
+                    paddingHorizontal: spacing.sm + 2,
+                    paddingVertical: spacing.xs,
+                    borderRadius: borderRadius.round,
                     opacity: pressed ? 0.7 : 1,
                   })}
                   onPress={() => setShowBGGPicker(true)}
                 >
-                  <MaterialIcons name="search" size={22} color="#FFFFFF" />
+                  <MaterialIcons name="casino" size={14} color={colors.accent} />
+                  <Text style={{
+                    fontSize: typography.sizes.xs,
+                    fontWeight: typography.weights.semibold,
+                    color: colors.accent,
+                  }}>اختر من BGG</Text>
                 </Pressable>
               </View>
+              <TextInput
+                style={{
+                  backgroundColor: colors.background,
+                  borderRadius: borderRadius.md,
+                  paddingHorizontal: spacing.md,
+                  paddingVertical: spacing.sm + 2,
+                  fontSize: typography.sizes.md,
+                  color: colors.text,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  textAlign: 'right',
+                }}
+                placeholder="مثال: كاتان، مونوبولي"
+                placeholderTextColor={colors.textLight}
+                value={gameBrought}
+                onChangeText={setGameBrought}
+              />
             </View>
 
             <View style={{ marginBottom: spacing.lg }}>
