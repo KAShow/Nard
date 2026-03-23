@@ -10,65 +10,42 @@ import {
   Modal,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '@/contexts/ThemeContext';
 import { spacing, borderRadius, typography } from '@/constants/theme';
-import { fetchBGGCollection, filterByPlayerCount } from '@/services/bggService';
+import { loadBGGCollection, filterByPlayerCount } from '@/services/bggService';
 import { BGGGame } from '@/types';
-
-const BGG_USERNAME_KEY = '@nard_bgg_username';
 
 interface BGGGamePickerProps {
   visible: boolean;
   onClose: () => void;
   onSelect: (gameName: string) => void;
-  playerCount?: number; // for auto-filtering
+  playerCount?: number;
 }
 
 export function BGGGamePicker({ visible, onClose, onSelect, playerCount }: BGGGamePickerProps) {
-  const { colors, shadows } = useTheme();
+  const { colors } = useTheme();
   const [games, setGames] = useState<BGGGame[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [showAll, setShowAll] = useState(false);
-  const [bggUsername, setBggUsername] = useState<string | null>(null);
 
   useEffect(() => {
     if (visible) {
       setSearch('');
-      setError(null);
-      AsyncStorage.getItem(BGG_USERNAME_KEY).then((val) => {
-        setBggUsername(val);
-        if (val && games.length === 0) {
-          loadGames(val);
-        }
-      });
+      setLoading(true);
+      loadBGGCollection()
+        .then(setGames)
+        .finally(() => setLoading(false));
     }
   }, [visible]);
-
-  const loadGames = async (username: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await fetchBGGCollection(username);
-      setGames(data);
-    } catch (e: any) {
-      setError(e.message || 'فشل جلب الألعاب');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const filteredGames = useMemo(() => {
     let result = games;
 
-    // Filter by player count if available and not showing all
     if (playerCount && !showAll) {
       result = filterByPlayerCount(result, playerCount);
     }
 
-    // Filter by search text
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       result = result.filter((g) => g.name.toLowerCase().includes(q));
@@ -97,9 +74,9 @@ export function BGGGamePicker({ visible, onClose, onSelect, playerCount }: BGGGa
         onClose();
       }}
     >
-      {item.thumbnail ? (
+      {item.thumbnail || item.image ? (
         <Image
-          source={{ uri: item.thumbnail }}
+          source={{ uri: item.thumbnail || item.image }}
           style={{
             width: 50,
             height: 50,
@@ -140,14 +117,22 @@ export function BGGGamePicker({ visible, onClose, onSelect, playerCount }: BGGGa
               {item.minPlayers}-{item.maxPlayers}
             </Text>
           </View>
-          {item.avgRating > 0 && (
+          {item.rating > 0 && (
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
               <MaterialIcons name="star" size={14} color={colors.secondary} />
               <Text style={{ fontSize: typography.sizes.xs, color: colors.textSecondary }}>
-                {item.avgRating}
+                {Math.round(item.rating * 10) / 10}
               </Text>
             </View>
           )}
+          {item.playingTime ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+              <MaterialIcons name="schedule" size={14} color={colors.textSecondary} />
+              <Text style={{ fontSize: typography.sizes.xs, color: colors.textSecondary }}>
+                {item.playingTime}م
+              </Text>
+            </View>
+          ) : null}
         </View>
       </View>
 
@@ -190,48 +175,18 @@ export function BGGGamePicker({ visible, onClose, onSelect, playerCount }: BGGGa
                 color: colors.text,
               }}
             >
-              اختر لعبة من BGG
+              اختر لعبة من مجموعتك
             </Text>
             <Pressable onPress={onClose} style={{ padding: spacing.xs }}>
               <MaterialIcons name="close" size={24} color={colors.textSecondary} />
             </Pressable>
           </View>
 
-          {!bggUsername ? (
-            // No BGG username saved
-            <View
-              style={{
-                alignItems: 'center',
-                paddingVertical: spacing.xxl,
-                paddingHorizontal: spacing.md,
-              }}
-            >
-              <MaterialIcons name="link-off" size={48} color={colors.textLight} />
-              <Text
-                style={{
-                  fontSize: typography.sizes.md,
-                  color: colors.textSecondary,
-                  textAlign: 'center',
-                  marginTop: spacing.md,
-                }}
-              >
-                أضف حساب BGG من الملف الشخصي أولاً
-              </Text>
-            </View>
-          ) : loading ? (
+          {loading ? (
             <View style={{ alignItems: 'center', paddingVertical: spacing.xxl }}>
               <ActivityIndicator size="large" color={colors.primary} />
-              <Text
-                style={{
-                  fontSize: typography.sizes.sm,
-                  color: colors.textSecondary,
-                  marginTop: spacing.md,
-                }}
-              >
-                جاري جلب ألعاب {bggUsername}...
-              </Text>
             </View>
-          ) : error ? (
+          ) : totalCount === 0 ? (
             <View
               style={{
                 alignItems: 'center',
@@ -239,31 +194,17 @@ export function BGGGamePicker({ visible, onClose, onSelect, playerCount }: BGGGa
                 paddingHorizontal: spacing.md,
               }}
             >
-              <MaterialIcons name="error-outline" size={48} color={colors.error} />
+              <MaterialIcons name="cloud-off" size={48} color={colors.textLight} />
               <Text
                 style={{
                   fontSize: typography.sizes.md,
-                  color: colors.error,
+                  color: colors.textSecondary,
                   textAlign: 'center',
                   marginTop: spacing.md,
                 }}
               >
-                {error}
+                لا توجد بيانات ألعاب{'\n'}استورد مجموعتك من الملف الشخصي
               </Text>
-              <Pressable
-                style={{
-                  marginTop: spacing.md,
-                  backgroundColor: colors.primary,
-                  paddingHorizontal: spacing.lg,
-                  paddingVertical: spacing.sm,
-                  borderRadius: borderRadius.md,
-                }}
-                onPress={() => loadGames(bggUsername)}
-              >
-                <Text style={{ color: '#FFFFFF', fontWeight: typography.weights.semibold }}>
-                  إعادة المحاولة
-                </Text>
-              </Pressable>
             </View>
           ) : (
             <>

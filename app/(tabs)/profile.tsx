@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, Pressable, TextInput } from 'react-native';
+import { View, Text, ScrollView, Pressable, TextInput, Modal } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -10,6 +10,8 @@ import { useSessions } from '@/hooks/useSessions';
 import { useTheme } from '@/contexts/ThemeContext';
 import { spacing, borderRadius, typography } from '@/constants/theme';
 import { BadgeInfo } from '@/types';
+import { saveBGGCollection, loadBGGCollection, clearBGGCollection } from '@/services/bggService';
+import { useAlert } from '@/template';
 
 const BGG_USERNAME_KEY = '@nard_bgg_username';
 
@@ -34,28 +36,15 @@ export default function ProfileScreen() {
   const { sessions } = useSessions();
   const { colors, shadows, isDark, toggleTheme } = useTheme();
 
-  const [bggUsername, setBggUsername] = useState('');
-  const [bggSaved, setBggSaved] = useState(false);
+  const { showAlert } = useAlert();
+  const [bggGamesCount, setBggGamesCount] = useState(0);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importJson, setImportJson] = useState('');
+  const [importing, setImporting] = useState(false);
 
   useEffect(() => {
-    AsyncStorage.getItem(BGG_USERNAME_KEY).then((val) => {
-      if (val) {
-        setBggUsername(val);
-        setBggSaved(true);
-      }
-    });
+    loadBGGCollection().then((games) => setBggGamesCount(games.length));
   }, []);
-
-  const saveBggUsername = async () => {
-    const trimmed = bggUsername.trim();
-    if (trimmed) {
-      await AsyncStorage.setItem(BGG_USERNAME_KEY, trimmed);
-      setBggSaved(true);
-    } else {
-      await AsyncStorage.removeItem(BGG_USERNAME_KEY);
-      setBggSaved(false);
-    }
-  };
 
   if (!user) return null;
 
@@ -270,7 +259,7 @@ export default function ProfileScreen() {
         </View>
       </View>
 
-      {/* BGG Account */}
+      {/* BGG Collection */}
       <View style={{ marginHorizontal: spacing.md, marginBottom: spacing.xl }}>
         <Text
           style={{
@@ -280,63 +269,161 @@ export default function ProfileScreen() {
             marginBottom: spacing.md,
           }}
         >
-          حساب BoardGameGeek
+          مجموعة BoardGameGeek
         </Text>
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: spacing.sm,
-          }}
-        >
-          <TextInput
+
+        {bggGamesCount > 0 ? (
+          <View
             style={{
-              flex: 1,
               backgroundColor: colors.surface,
               borderRadius: borderRadius.md,
-              paddingHorizontal: spacing.md,
-              paddingVertical: spacing.sm + 2,
-              fontSize: typography.sizes.md,
-              color: colors.text,
+              padding: spacing.md,
               borderWidth: 1,
-              borderColor: bggSaved ? colors.success : colors.border,
-              textAlign: 'left',
+              borderColor: colors.success + '50',
+              ...shadows.sm,
             }}
-            placeholder="BGG Username"
-            placeholderTextColor={colors.textLight}
-            value={bggUsername}
-            onChangeText={(t) => { setBggUsername(t); setBggSaved(false); }}
-            autoCapitalize="none"
-          />
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: spacing.sm }}>
+              <MaterialIcons name="check-circle" size={20} color={colors.success} />
+              <Text style={{ fontSize: typography.sizes.md, color: colors.text, fontWeight: typography.weights.semibold, marginStart: spacing.xs }}>
+                {bggGamesCount} لعبة محفوظة
+              </Text>
+            </View>
+            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+              <Pressable
+                style={({ pressed }) => ({
+                  flex: 1,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: colors.primary,
+                  paddingVertical: spacing.sm,
+                  borderRadius: borderRadius.md,
+                  gap: spacing.xs,
+                  opacity: pressed ? 0.7 : 1,
+                })}
+                onPress={() => setShowImportModal(true)}
+              >
+                <MaterialIcons name="refresh" size={18} color="#FFFFFF" />
+                <Text style={{ color: '#FFFFFF', fontWeight: typography.weights.semibold, fontSize: typography.sizes.sm }}>تحديث</Text>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => ({
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: colors.surfaceLight,
+                  paddingVertical: spacing.sm,
+                  paddingHorizontal: spacing.md,
+                  borderRadius: borderRadius.md,
+                  gap: spacing.xs,
+                  opacity: pressed ? 0.7 : 1,
+                })}
+                onPress={async () => {
+                  await clearBGGCollection();
+                  setBggGamesCount(0);
+                }}
+              >
+                <MaterialIcons name="delete-outline" size={18} color={colors.error} />
+              </Pressable>
+            </View>
+          </View>
+        ) : (
           <Pressable
             style={({ pressed }) => ({
-              backgroundColor: bggSaved ? colors.success : colors.primary,
-              paddingHorizontal: spacing.md,
-              paddingVertical: spacing.sm + 2,
+              backgroundColor: colors.surface,
               borderRadius: borderRadius.md,
+              padding: spacing.lg,
+              alignItems: 'center',
+              borderWidth: 1,
+              borderColor: colors.border,
+              borderStyle: 'dashed' as any,
               opacity: pressed ? 0.7 : 1,
+              ...shadows.sm,
             })}
-            onPress={saveBggUsername}
+            onPress={() => setShowImportModal(true)}
           >
-            <MaterialIcons
-              name={bggSaved ? 'check' : 'save'}
-              size={22}
-              color="#FFFFFF"
-            />
+            <MaterialIcons name="cloud-download" size={36} color={colors.primary} />
+            <Text style={{ fontSize: typography.sizes.md, fontWeight: typography.weights.semibold, color: colors.text, marginTop: spacing.sm }}>
+              استيراد مجموعة BGG
+            </Text>
+            <Text style={{ fontSize: typography.sizes.xs, color: colors.textSecondary, marginTop: spacing.xs, textAlign: 'center' }}>
+              شغّل السكربت في كونسول BGG ثم الصق النتيجة هنا
+            </Text>
           </Pressable>
-        </View>
-        {bggSaved && (
-          <Text
-            style={{
-              fontSize: typography.sizes.xs,
-              color: colors.success,
-              marginTop: spacing.xs,
-            }}
-          >
-            تم الحفظ — يمكنك اختيار ألعابك عند الانضمام لجلسة
-          </Text>
         )}
       </View>
+
+      {/* BGG Import Modal */}
+      <Modal visible={showImportModal} transparent animationType="slide" onRequestClose={() => setShowImportModal(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: colors.background, borderTopLeftRadius: borderRadius.xl, borderTopRightRadius: borderRadius.xl, padding: spacing.lg, maxHeight: '80%' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md }}>
+              <Text style={{ fontSize: typography.sizes.lg, fontWeight: typography.weights.bold, color: colors.text }}>
+                استيراد بيانات BGG
+              </Text>
+              <Pressable onPress={() => { setShowImportModal(false); setImportJson(''); }}>
+                <MaterialIcons name="close" size={24} color={colors.textSecondary} />
+              </Pressable>
+            </View>
+
+            <Text style={{ fontSize: typography.sizes.sm, color: colors.textSecondary, marginBottom: spacing.md }}>
+              الصق بيانات JSON من سكربت BGG:
+            </Text>
+
+            <TextInput
+              style={{
+                backgroundColor: colors.surface,
+                borderRadius: borderRadius.md,
+                padding: spacing.md,
+                fontSize: typography.sizes.sm,
+                color: colors.text,
+                borderWidth: 1,
+                borderColor: colors.border,
+                minHeight: 150,
+                maxHeight: 300,
+                textAlignVertical: 'top',
+                fontFamily: 'monospace',
+              }}
+              placeholder='[{"id":"12345","name":"Catan",...}]'
+              placeholderTextColor={colors.textLight}
+              value={importJson}
+              onChangeText={setImportJson}
+              multiline
+            />
+
+            <Pressable
+              style={({ pressed }) => ({
+                backgroundColor: importJson.trim() ? colors.primary : colors.surfaceLight,
+                paddingVertical: spacing.md,
+                borderRadius: borderRadius.md,
+                alignItems: 'center',
+                marginTop: spacing.md,
+                opacity: pressed ? 0.7 : 1,
+              })}
+              disabled={!importJson.trim() || importing}
+              onPress={async () => {
+                setImporting(true);
+                try {
+                  const count = await saveBGGCollection(importJson.trim());
+                  setBggGamesCount(count);
+                  setShowImportModal(false);
+                  setImportJson('');
+                  showAlert('تم!', `تم حفظ ${count} لعبة بنجاح`);
+                } catch (e: any) {
+                  showAlert('خطأ', e.message || 'فشل استيراد البيانات');
+                } finally {
+                  setImporting(false);
+                }
+              }}
+            >
+              <Text style={{ color: importJson.trim() ? '#FFFFFF' : colors.textLight, fontWeight: typography.weights.bold, fontSize: typography.sizes.md }}>
+                {importing ? 'جاري الاستيراد...' : 'استيراد'}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
 
       {/* Logout */}
       <Pressable

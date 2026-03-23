@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, ScrollView, Pressable, TextInput, Modal } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useSessions } from '@/hooks/useSessions';
 import { RandomPicker } from '@/components/RandomPicker';
 import { BGGGamePicker } from '@/components/BGGGamePicker';
+import { loadBGGCollection } from '@/services/bggService';
 import { spacing, borderRadius, typography } from '@/constants/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAlert } from '@/template';
@@ -33,19 +33,15 @@ export default function SessionDetailScreen() {
   const [showPickerModal, setShowPickerModal] = useState(false);
   const [showBGGPicker, setShowBGGPicker] = useState(false);
 
-  // Auto-open BGG picker when join modal opens if user has BGG account
+  // Auto-open BGG picker when join modal opens if user has BGG collection
   useEffect(() => {
     if (showJoinModal) {
-      AsyncStorage.getItem('@nard_bgg_username').then((val) => {
-        if (val) {
-          // Delay to ensure modal is fully rendered
-          setTimeout(() => {
-            setShowBGGPicker(true);
-          }, 300);
+      loadBGGCollection().then((games) => {
+        if (games.length > 0) {
+          setTimeout(() => setShowBGGPicker(true), 300);
         }
       });
     } else {
-      // Reset BGG picker when modal closes
       setShowBGGPicker(false);
     }
   }, [showJoinModal]);

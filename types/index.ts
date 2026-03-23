@@ -45,10 +45,13 @@ export type Badge =
 export interface BGGGame {
   id: string;
   name: string;
+  yearPublished?: string;
+  image?: string;
   thumbnail?: string;
   minPlayers: number;
   maxPlayers: number;
-  avgRating: number;
+  playingTime?: number;
+  rating: number;
 }
 
 export interface BadgeInfo {

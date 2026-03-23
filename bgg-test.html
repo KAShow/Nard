@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BGG API Test</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #1a1a2e; color: #eee; padding: 20px; }
+    h1 { text-align: center; margin-bottom: 20px; color: #FF6B35; }
+    .controls { display: flex; gap: 10px; margin-bottom: 20px; justify-content: center; flex-wrap: wrap; }
+    input { padding: 10px 16px; border-radius: 8px; border: 1px solid #444; background: #2a2a3a; color: #eee; font-size: 16px; width: 200px; }
+    button { padding: 10px 20px; border-radius: 8px; border: none; background: #FF6B35; color: #fff; font-size: 16px; cursor: pointer; font-weight: bold; }
+    button:hover { background: #e85a2a; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    #status { text-align: center; margin: 10px 0; color: #FFD23F; font-size: 14px; }
+    #rawXml { background: #0d0d1a; border: 1px solid #333; border-radius: 8px; padding: 12px; margin: 10px 0; max-height: 300px; overflow: auto; font-family: monospace; font-size: 12px; white-space: pre-wrap; word-break: break-all; display: none; color: #aaa; }
+    #results { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+    .game { background: #2a2a3a; border-radius: 12px; padding: 12px; display: flex; gap: 12px; align-items: center; border: 1px solid #333; }
+    .game img { width: 60px; height: 60px; border-radius: 8px; object-fit: cover; background: #1a1a2e; }
+    .game .no-img { width: 60px; height: 60px; border-radius: 8px; background: #1a1a2e; display: flex; align-items: center; justify-content: center; font-size: 24px; }
+    .game .info { flex: 1; }
+    .game .name { font-weight: bold; font-size: 15px; margin-bottom: 4px; }
+    .game .meta { font-size: 12px; color: #888; display: flex; gap: 12px; }
+    .game .meta span { display: flex; align-items: center; gap: 3px; }
+    .count { text-align: center; margin-bottom: 10px; color: #3BCEAC; }
+    .toggle { background: #3BCEAC; font-size: 13px; padding: 6px 14px; }
+    .error { color: #FF6B6B; text-align: center; margin: 20px; }
+  </style>
+</head>
+<body>
+  <h1>BGG Collection API Test</h1>
+
+  <div class="controls">
+    <input id="username" placeholder="BGG Username" value="alibasri">
+    <input id="playerCount" type="number" placeholder="عدد اللاعبين" value="" min="1" max="20" style="width:120px">
+    <button id="fetchBtn" onclick="fetchCollection()">Fetch</button>
+    <button class="toggle" onclick="toggleRawXml()">Show Raw XML</button>
+  </div>
+
+  <div id="status"></div>
+  <div id="rawXml"></div>
+  <div id="count" class="count"></div>
+  <div id="results"></div>
+
+  <script>
+    let rawXmlData = '';
+    let allGames = [];
+
+    function setStatus(msg) {
+      document.getElementById('status').textContent = msg;
+    }
+
+    function toggleRawXml() {
+      const el = document.getElementById('rawXml');
+      el.style.display = el.style.display === 'none' ? 'block' : 'none';
+    }
+
+    async function fetchCollection() {
+      const username = document.getElementById('username').value.trim();
+      if (!username) { setStatus('ادخل اسم المستخدم'); return; }
+
+      const btn = document.getElementById('fetchBtn');
+      btn.disabled = true;
+      document.getElementById('results').innerHTML = '';
+      document.getElementById('count').textContent = '';
+      rawXmlData = '';
+
+      // BGG blocks direct browser requests (CORS), use a proxy
+      const bggUrl = `https://boardgamegeek.com/xmlapi2/collection?username=${encodeURIComponent(username)}&own=1&stats=1&subtype=boardgame`;
+      const url = `https://api.allorigins.win/raw?url=${encodeURIComponent(bggUrl)}`;
+
+      setStatus(`Fetching: ${url}`);
+
+      for (let attempt = 1; attempt <= 6; attempt++) {
+        setStatus(`Attempt ${attempt}/6...`);
+
+        try {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 15000);
+
+          const response = await fetch(url, { signal: controller.signal });
+          clearTimeout(timeout);
+
+          setStatus(`Attempt ${attempt}: HTTP ${response.status}`);
+
+          if (response.status === 200) {
+            const xml = await response.text();
+            rawXmlData = xml;
+            document.getElementById('rawXml').textContent = xml.substring(0, 5000) + (xml.length > 5000 ? '\n... (truncated)' : '');
+
+            const games = parseCollection(xml);
+            allGames = games;
+            setStatus(`Success! ${games.length} games found`);
+            renderGames(games);
+            btn.disabled = false;
+            return;
+          }
+
+          if (response.status === 202) {
+            setStatus(`Attempt ${attempt}: 202 - Collection being prepared, waiting 3s...`);
+            await new Promise(r => setTimeout(r, 3000));
+            continue;
+          }
+
+          setStatus(`Error: HTTP ${response.status}`);
+          btn.disabled = false;
+          return;
+
+        } catch (e) {
+          setStatus(`Attempt ${attempt} error: ${e.message}`);
+          if (attempt < 6) {
+            await new Promise(r => setTimeout(r, 2000));
+          }
+        }
+      }
+
+      setStatus('Failed after 6 attempts - BGG may be slow, try again later');
+      btn.disabled = false;
+    }
+
+    function parseCollection(xml) {
+      const games = [];
+      const itemRegex = /<item[^>]*objectid="(\d+)"[^>]*>([\s\S]*?)<\/item>/g;
+      let match;
+
+      while ((match = itemRegex.exec(xml)) !== null) {
+        const id = match[1];
+        const block = match[2];
+
+        // Name: <name sortindex="1">Game Name</name>
+        const nameMatch = block.match(/<name[^>]*>([^<]*)<\/name>/);
+        const name = nameMatch ? nameMatch[1].trim() : '?';
+
+        // Thumbnail: <thumbnail>URL</thumbnail>
+        const thumbMatch = block.match(/<thumbnail>([^<]*)<\/thumbnail>/);
+        const thumbnail = thumbMatch ? thumbMatch[1].trim() : '';
+
+        // Stats: <stats minplayers="X" maxplayers="Y" ...>
+        const minPlayersMatch = block.match(/<stats[^>]*\sminplayers="(\d+)"/);
+        const maxPlayersMatch = block.match(/<stats[^>]*\smaxplayers="(\d+)"/);
+        const minPlayers = minPlayersMatch ? parseInt(minPlayersMatch[1]) : 0;
+        const maxPlayers = maxPlayersMatch ? parseInt(maxPlayersMatch[1]) : 0;
+
+        // Rating: <average value="7.17"/> inside <rating> inside <stats>
+        const avgMatch = block.match(/<average\s+value="([^"]*)"/);
+        const avgRating = avgMatch ? parseFloat(avgMatch[1]) : 0;
+
+        games.push({
+          id, name, thumbnail, minPlayers, maxPlayers,
+          avgRating: isNaN(avgRating) ? 0 : Math.round(avgRating * 10) / 10
+        });
+      }
+
+      return games.sort((a, b) => b.avgRating - a.avgRating);
+    }
+
+    function renderGames(games) {
+      const playerCount = parseInt(document.getElementById('playerCount').value) || 0;
+      let filtered = games;
+
+      if (playerCount > 0) {
+        filtered = games.filter(g => g.minPlayers <= playerCount && g.maxPlayers >= playerCount);
+      }
+
+      document.getElementById('count').textContent =
+        playerCount > 0
+          ? `${filtered.length} games for ${playerCount} players (out of ${games.length} total)`
+          : `${filtered.length} games total`;
+
+      document.getElementById('results').innerHTML = filtered.map(g => `
+        <div class="game">
+          ${g.thumbnail
+            ? `<img src="${g.thumbnail}" onerror="this.style.display='none'">`
+            : '<div class="no-img">🎲</div>'}
+          <div class="info">
+            <div class="name">${g.name}</div>
+            <div class="meta">
+              <span>👥 ${g.minPlayers}-${g.maxPlayers}</span>
+              ${g.avgRating > 0 ? `<span>⭐ ${g.avgRating}</span>` : ''}
+              <span>ID: ${g.id}</span>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Re-render when player count changes
+    document.getElementById('playerCount').addEventListener('input', () => {
+      if (allGames.length > 0) renderGames(allGames);
+    });
+  </script>
+</body>
+</html>
