@@ -33,18 +33,12 @@ export default function SessionDetailScreen() {
   const [showPickerModal, setShowPickerModal] = useState(false);
   const [showBGGPicker, setShowBGGPicker] = useState(false);
 
-  // Auto-open BGG picker when join modal opens if user has BGG collection
+  const [hasBGGGames, setHasBGGGames] = useState(false);
+
+  // Check if user has BGG collection on mount
   useEffect(() => {
-    if (showJoinModal) {
-      loadBGGCollection().then((games) => {
-        if (games.length > 0) {
-          setTimeout(() => setShowBGGPicker(true), 300);
-        }
-      });
-    } else {
-      setShowBGGPicker(false);
-    }
-  }, [showJoinModal]);
+    loadBGGCollection().then((games) => setHasBGGGames(games.length > 0));
+  }, []);
 
   const session = sessions.find(s => s.id === id);
 
@@ -414,7 +408,13 @@ export default function SessionDetailScreen() {
               justifyContent: 'center',
               ...shadows.md,
             }, isFull && { opacity: 0.5 }, pressed && !isFull && { opacity: 0.85, transform: [{ scale: 0.98 }] }]}
-            onPress={() => setShowJoinModal(true)}
+            onPress={() => {
+              if (hasBGGGames) {
+                setShowBGGPicker(true);
+              } else {
+                setShowJoinModal(true);
+              }
+            }}
             disabled={isFull}
           >
             <MaterialIcons name="check-circle" size={24} color="#FFFFFF" />
@@ -505,7 +505,10 @@ export default function SessionDetailScreen() {
                     borderRadius: borderRadius.round,
                     opacity: pressed ? 0.7 : 1,
                   })}
-                  onPress={() => setShowBGGPicker(true)}
+                  onPress={() => {
+                    setShowJoinModal(false);
+                    setTimeout(() => setShowBGGPicker(true), 200);
+                  }}
                 >
                   <MaterialIcons name="casino" size={14} color={colors.accent} />
                   <Text style={{
@@ -654,7 +657,10 @@ export default function SessionDetailScreen() {
       {/* BGG Game Picker */}
       <BGGGamePicker
         visible={showBGGPicker}
-        onClose={() => setShowBGGPicker(false)}
+        onClose={() => {
+          setShowBGGPicker(false);
+          setTimeout(() => setShowJoinModal(true), 200);
+        }}
         onSelect={(name) => setGameBrought(name)}
         playerCount={session.attendees.length + 1}
       />
