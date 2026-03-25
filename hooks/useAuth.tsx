@@ -16,6 +16,32 @@ export function useAuth() {
     };
   }, [auth.user?.id, auth.user?.username, auth.user?.email]);
 
+  const deleteAccount = async (): Promise<{ error: string | null }> => {
+    if (!auth.user) {
+      return { error: 'لا يوجد مستخدم مسجل' };
+    }
+
+    try {
+      // Use the underlying Supabase client to call the delete function
+      const { getSupabaseClient } = require('@/template');
+      const supabase = getSupabaseClient();
+      
+      // Call the RPC function to delete the user's account
+      const { error } = await supabase.rpc('delete_own_account');
+      
+      if (error) {
+        return { error: error.message };
+      }
+
+      // Sign out locally
+      await auth.logout();
+      
+      return { error: null };
+    } catch (error: any) {
+      return { error: error.message || 'حدث خطأ أثناء حذف الحساب' };
+    }
+  };
+
   return {
     user,
     loading: auth.loading,
@@ -25,5 +51,6 @@ export function useAuth() {
     signUpWithPassword: auth.signUpWithPassword,
     signInWithPassword: auth.signInWithPassword,
     logout: auth.logout,
+    deleteAccount,
   };
 }

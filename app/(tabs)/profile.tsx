@@ -32,11 +32,13 @@ const BADGE_THRESHOLDS: Record<string, number> = {
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user, logout, deleteAccount } = useAuth();
   const { sessions } = useSessions();
   const { colors, shadows, isDark, toggleTheme } = useTheme();
 
   const { showAlert } = useAlert();
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [bggGamesCount, setBggGamesCount] = useState(0);
   const [showImportModal, setShowImportModal] = useState(false);
   const [importJson, setImportJson] = useState('');
@@ -81,6 +83,27 @@ export default function ProfileScreen() {
   const handleLogout = async () => {
     await logout();
     router.replace('/login' as any);
+  };
+
+  const handleDeleteAccount = async () => {
+    setIsDeleting(true);
+    const { error } = await deleteAccount();
+    setIsDeleting(false);
+    
+    if (error) {
+      setShowDeleteModal(false);
+      showAlert('خطأ', error);
+      return;
+    }
+    
+    // Success - user will be redirected by auth listener in _layout
+    setShowDeleteModal(false);
+    showAlert('تم بنجاح', 'تم حذف حسابك نهائياً');
+    
+    // Force navigation to login
+    setTimeout(() => {
+      router.replace('/login' as any);
+    }, 500);
   };
 
   return (
@@ -437,7 +460,33 @@ export default function ProfileScreen() {
         })}
         onPress={handleLogout}
       >
-        <MaterialIcons name="logout" size={20} color={colors.error} />
+        <MaterialIcons name="logout" size={20} color={colors.textSecondary} />
+        <Text
+          style={{
+            fontSize: typography.sizes.sm,
+            fontWeight: typography.weights.medium,
+            color: colors.textSecondary,
+            marginStart: spacing.sm,
+          }}
+        >
+          تسجيل الخروج
+        </Text>
+      </Pressable>
+
+      {/* Delete Account */}
+      <Pressable
+        style={({ pressed }) => ({
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingVertical: spacing.md,
+          marginHorizontal: spacing.md,
+          marginTop: spacing.sm,
+          opacity: pressed ? 0.5 : 1,
+        })}
+        onPress={() => setShowDeleteModal(true)}
+      >
+        <MaterialIcons name="delete-forever" size={20} color={colors.error} />
         <Text
           style={{
             fontSize: typography.sizes.sm,
@@ -446,9 +495,130 @@ export default function ProfileScreen() {
             marginStart: spacing.sm,
           }}
         >
-          تسجيل الخروج
+          حذف الحساب
         </Text>
       </Pressable>
+
+      {/* Delete Account Confirmation Modal */}
+      <Modal
+        visible={showDeleteModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => !isDeleting && setShowDeleteModal(false)}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.6)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: spacing.lg,
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: colors.surface,
+              borderRadius: borderRadius.xl,
+              padding: spacing.xl,
+              width: '100%',
+              maxWidth: 400,
+              ...shadows.xl,
+            }}
+          >
+            {/* Warning Icon */}
+            <View
+              style={{
+                width: 64,
+                height: 64,
+                borderRadius: 32,
+                backgroundColor: colors.error + '15',
+                alignItems: 'center',
+                justifyContent: 'center',
+                alignSelf: 'center',
+                marginBottom: spacing.lg,
+              }}
+            >
+              <MaterialIcons name="warning" size={36} color={colors.error} />
+            </View>
+
+            {/* Title */}
+            <Text
+              style={{
+                fontSize: typography.sizes.xl,
+                fontWeight: typography.weights.bold,
+                color: colors.text,
+                textAlign: 'center',
+                marginBottom: spacing.md,
+              }}
+            >
+              هل أنت متأكد من حذف حسابك؟
+            </Text>
+
+            {/* Warning Message */}
+            <Text
+              style={{
+                fontSize: typography.sizes.md,
+                color: colors.textSecondary,
+                textAlign: 'center',
+                lineHeight: 24,
+                marginBottom: spacing.xl,
+              }}
+            >
+              سيتم حذف جميع بياناتك نهائياً ولا يمكن التراجع عن هذا الإجراء.
+            </Text>
+
+            {/* Action Buttons */}
+            <View style={{ gap: spacing.sm }}>
+              {/* Delete Button */}
+              <Pressable
+                style={({ pressed }) => ({
+                  backgroundColor: colors.error,
+                  paddingVertical: spacing.md + 2,
+                  borderRadius: borderRadius.md,
+                  alignItems: 'center',
+                  opacity: pressed || isDeleting ? 0.7 : 1,
+                  ...shadows.md,
+                })}
+                onPress={handleDeleteAccount}
+                disabled={isDeleting}
+              >
+                <Text
+                  style={{
+                    color: '#FFFFFF',
+                    fontSize: typography.sizes.md,
+                    fontWeight: typography.weights.bold,
+                  }}
+                >
+                  {isDeleting ? 'جاري الحذف...' : 'تأكيد الحذف'}
+                </Text>
+              </Pressable>
+
+              {/* Cancel Button */}
+              <Pressable
+                style={({ pressed }) => ({
+                  backgroundColor: colors.surfaceLight,
+                  paddingVertical: spacing.md + 2,
+                  borderRadius: borderRadius.md,
+                  alignItems: 'center',
+                  opacity: pressed ? 0.7 : 1,
+                })}
+                onPress={() => setShowDeleteModal(false)}
+                disabled={isDeleting}
+              >
+                <Text
+                  style={{
+                    color: colors.text,
+                    fontSize: typography.sizes.md,
+                    fontWeight: typography.weights.semibold,
+                  }}
+                >
+                  إلغاء
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
