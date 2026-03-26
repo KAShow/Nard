@@ -125,6 +125,50 @@ export default function SessionDetailScreen() {
     }
   }, [session, user, isDeleted]);
 
+  // ✅ ALL useMemo hooks MUST be before early return
+  // Aggregate games from attendees
+  const allGamesBrought = useMemo(() => {
+    if (!session) return [];
+    const games: string[] = [];
+    session.attendees.forEach(a => {
+      if (a.gameBrought) {
+        games.push(a.gameBrought);
+      }
+    });
+    return games;
+  }, [session?.attendees]);
+
+  // Calculate vote results
+  const voteResults: GameVoteResult[] = useMemo(() => {
+    if (!session) return [];
+    const voteMap = new Map<string, { count: number; voters: string[] }>();
+    
+    (session.gameVotes || []).forEach(vote => {
+      const current = voteMap.get(vote.gameName) || { count: 0, voters: [] };
+      const voter = session.attendees.find(a => a.userId === vote.userId);
+      voteMap.set(vote.gameName, {
+        count: current.count + 1,
+        voters: [...current.voters, voter?.userName || 'غير معروف'],
+      });
+    });
+
+    return Array.from(voteMap.entries())
+      .map(([gameName, { count, voters }]) => ({
+        gameName,
+        voteCount: count,
+        voters,
+      }))
+      .sort((a, b) => b.voteCount - a.voteCount);
+  }, [session?.gameVotes, session?.attendees]);
+
+  const userVotes = useMemo(() => {
+    if (!session || !user) return [];
+    return (session.gameVotes || [])
+      .filter(v => v.userId === user.id)
+      .map(v => v.gameName);
+  }, [session?.gameVotes, user?.id]);
+
+  // ✅ Early return AFTER all hooks
   if (!session || !user) {
     return (
       <View style={{
@@ -166,45 +210,6 @@ export default function SessionDetailScreen() {
     : session.status === 'ongoing' ? colors.success
     : colors.textLight;
   const statusConfig = STATUS_CONFIG[session.status];
-
-  // Aggregate games from attendees
-  const allGamesBrought = useMemo(() => {
-    const games: string[] = [];
-    session.attendees.forEach(a => {
-      if (a.gameBrought) {
-        games.push(a.gameBrought);
-      }
-    });
-    return games;
-  }, [session.attendees]);
-
-  // Calculate vote results
-  const voteResults: GameVoteResult[] = useMemo(() => {
-    const voteMap = new Map<string, { count: number; voters: string[] }>();
-    
-    (session.gameVotes || []).forEach(vote => {
-      const current = voteMap.get(vote.gameName) || { count: 0, voters: [] };
-      const voter = session.attendees.find(a => a.userId === vote.userId);
-      voteMap.set(vote.gameName, {
-        count: current.count + 1,
-        voters: [...current.voters, voter?.userName || 'غير معروف'],
-      });
-    });
-
-    return Array.from(voteMap.entries())
-      .map(([gameName, { count, voters }]) => ({
-        gameName,
-        voteCount: count,
-        voters,
-      }))
-      .sort((a, b) => b.voteCount - a.voteCount);
-  }, [session.gameVotes, session.attendees]);
-
-  const userVotes = useMemo(() => {
-    return (session.gameVotes || [])
-      .filter(v => v.userId === user.id)
-      .map(v => v.gameName);
-  }, [session.gameVotes, user.id]);
 
   const handleJoin = async () => {
     if (isFull && !isAttending) {
