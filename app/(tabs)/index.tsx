@@ -12,9 +12,11 @@ import { spacing, borderRadius, typography } from '@/constants/theme';
 import { Session } from '@/types';
 
 function getDaysUntil(dateString: string): number {
+  if (!dateString) return 999;
   const now = new Date();
   now.setHours(0, 0, 0, 0);
   const target = new Date(dateString);
+  if (isNaN(target.getTime())) return 999;
   target.setHours(0, 0, 0, 0);
   const diff = target.getTime() - now.getTime();
   return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
@@ -148,10 +150,15 @@ export default function SessionsScreen() {
   const filteredSessions = useMemo(() => {
     return sessions
       .filter((session) => {
+        if (!session || !session.id) return false;
         if (filter === 'all') return true;
         return session.status === filter;
       })
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      .sort((a, b) => {
+        const dateA = new Date(a.date || '9999-12-31');
+        const dateB = new Date(b.date || '9999-12-31');
+        return dateA.getTime() - dateB.getTime();
+      });
   }, [sessions, filter]);
 
   const upcomingSessions = useMemo(

@@ -17,7 +17,9 @@ export function SessionCard({ session }: SessionCardProps) {
   const { colors, shadows } = useTheme();
 
   const formatDate = (dateStr: string) => {
+    if (!dateStr) return 'تاريخ غير محدد';
     const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return 'تاريخ غير صحيح';
     return new Intl.DateTimeFormat('ar', {
       weekday: 'long',
       day: 'numeric',
@@ -25,13 +27,19 @@ export function SessionCard({ session }: SessionCardProps) {
     }).format(date);
   };
 
-  // Defensive: ensure attendees and ratings are always arrays
-  const attendees = session.attendees || [];
-  const ratings = session.ratings || [];
+  // Defensive: ensure all fields are valid
+  const attendees = Array.isArray(session.attendees) ? session.attendees : [];
+  const ratings = Array.isArray(session.ratings) ? session.ratings : [];
+  const title = session.title || 'جلسة بدون عنوان';
+  const location = session.location || 'موقع غير محدد';
+  const time = session.time || 'وقت غير محدد';
+  const description = session.description || '';
+  const hostName = session.hostName || 'منظم';
+  const maxPlayers = session.maxPlayers > 0 ? session.maxPlayers : 8;
 
-  const spotsLeft = session.maxPlayers - attendees.length;
+  const spotsLeft = maxPlayers - attendees.length;
   const isFull = spotsLeft <= 0;
-  const fillPercent = Math.min((attendees.length / session.maxPlayers) * 100, 100);
+  const fillPercent = Math.min((attendees.length / maxPlayers) * 100, 100);
   const isAlmostFull = fillPercent > 90;
 
   const statusBorderColor = (() => {
@@ -95,7 +103,7 @@ export function SessionCard({ session }: SessionCardProps) {
             }}
             numberOfLines={1}
           >
-            {session.title}
+            {title}
           </Text>
         </View>
         <View
@@ -156,7 +164,7 @@ export function SessionCard({ session }: SessionCardProps) {
               flex: 1,
             }}
           >
-            {session.time}
+            {time}
           </Text>
         </View>
       </View>
@@ -180,13 +188,13 @@ export function SessionCard({ session }: SessionCardProps) {
             }}
             numberOfLines={1}
           >
-            {session.location}
+            {location}
           </Text>
         </View>
       </View>
 
       {/* Description */}
-      {session.description ? (
+      {description ? (
         <Text
           style={{
             fontSize: typography.sizes.sm,
@@ -196,7 +204,7 @@ export function SessionCard({ session }: SessionCardProps) {
           }}
           numberOfLines={2}
         >
-          {session.description}
+          {description}
         </Text>
       ) : null}
 
@@ -281,7 +289,7 @@ export function SessionCard({ session }: SessionCardProps) {
                 marginStart: spacing.xs,
               }}
             >
-              {attendees.length} / {session.maxPlayers}
+              {attendees.length} / {maxPlayers}
             </Text>
           </View>
 
@@ -291,7 +299,7 @@ export function SessionCard({ session }: SessionCardProps) {
               color: colors.textLight,
             }}
           >
-            المنظم: {session.hostName}
+            المنظم: {hostName}
           </Text>
         </View>
 
