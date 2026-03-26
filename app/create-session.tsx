@@ -481,16 +481,25 @@ export default function CreateSessionScreen() {
               textAlign: 'center',
             }}>اختر التاريخ</Text>
             
-            <DateTimePicker
-              value={tempDate}
-              mode="date"
-              display="spinner"
-              onChange={handleDateChange}
-              minimumDate={new Date()}
-              style={{ height: 200 }}
-            />
+            <View style={{
+              backgroundColor: colors.background,
+              borderRadius: borderRadius.md,
+              overflow: 'hidden',
+              marginBottom: spacing.md,
+            }}>
+              <DateTimePicker
+                value={tempDate}
+                mode="date"
+                display="spinner"
+                onChange={handleDateChange}
+                minimumDate={new Date()}
+                locale="ar"
+                style={{ width: '100%', height: 200 }}
+                textColor={colors.text}
+              />
+            </View>
 
-            <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.lg }}>
+            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
               <Pressable
                 style={({ pressed }) => [{
                   flex: 1,
@@ -560,15 +569,24 @@ export default function CreateSessionScreen() {
               textAlign: 'center',
             }}>اختر الوقت</Text>
             
-            <DateTimePicker
-              value={tempDate}
-              mode="time"
-              display="spinner"
-              onChange={handleTimeChange}
-              style={{ height: 200 }}
-            />
+            <View style={{
+              backgroundColor: colors.background,
+              borderRadius: borderRadius.md,
+              overflow: 'hidden',
+              marginBottom: spacing.md,
+            }}>
+              <DateTimePicker
+                value={tempDate}
+                mode="time"
+                display="spinner"
+                onChange={handleTimeChange}
+                locale="ar"
+                style={{ width: '100%', height: 200 }}
+                textColor={colors.text}
+              />
+            </View>
 
-            <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.lg }}>
+            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
               <Pressable
                 style={({ pressed }) => [{
                   flex: 1,
