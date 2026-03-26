@@ -454,7 +454,7 @@ export default function CreateSessionScreen() {
 
       {/* Date Picker Modal */}
       {showDatePicker && (
-        <View style={{
+        <Pressable style={{
           position: 'absolute',
           top: 0,
           left: 0,
@@ -464,8 +464,8 @@ export default function CreateSessionScreen() {
           justifyContent: 'center',
           alignItems: 'center',
           zIndex: 1000,
-        }}>
-          <View style={{
+        }} onPress={() => setShowDatePicker(false)}>
+          <View onStartShouldSetResponder={() => true} style={{
             backgroundColor: colors.surface,
             borderRadius: borderRadius.xl,
             padding: spacing.lg,
@@ -528,12 +528,12 @@ export default function CreateSessionScreen() {
               </Pressable>
             </View>
           </View>
-        </View>
+        </Pressable>
       )}
 
       {/* Time Picker Modal */}
       {showTimePicker && (
-        <View style={{
+        <Pressable style={{
           position: 'absolute',
           top: 0,
           left: 0,
@@ -543,8 +543,8 @@ export default function CreateSessionScreen() {
           justifyContent: 'center',
           alignItems: 'center',
           zIndex: 1000,
-        }}>
-          <View style={{
+        }} onPress={() => setShowTimePicker(false)}>
+          <View onStartShouldSetResponder={() => true} style={{
             backgroundColor: colors.surface,
             borderRadius: borderRadius.xl,
             padding: spacing.lg,
@@ -606,7 +606,7 @@ export default function CreateSessionScreen() {
               </Pressable>
             </View>
           </View>
-        </View>
+        </Pressable>
       )}
     </KeyboardAvoidingView>
   );
