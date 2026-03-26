@@ -18,7 +18,9 @@ export function SessionCard({ session }: SessionCardProps) {
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return 'تاريخ غير محدد';
-    const date = new Date(dateStr);
+    // Convert YYYY/MM/DD to YYYY-MM-DD for proper parsing
+    const normalizedDate = dateStr.replace(/\//g, '-');
+    const date = new Date(normalizedDate);
     if (isNaN(date.getTime())) return 'تاريخ غير صحيح';
     return new Intl.DateTimeFormat('ar', {
       weekday: 'long',

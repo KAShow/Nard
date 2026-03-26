@@ -15,7 +15,9 @@ function getDaysUntil(dateString: string): number {
   if (!dateString) return 999;
   const now = new Date();
   now.setHours(0, 0, 0, 0);
-  const target = new Date(dateString);
+  // Convert YYYY/MM/DD to YYYY-MM-DD for proper parsing
+  const normalizedDate = dateString.replace(/\//g, '-');
+  const target = new Date(normalizedDate);
   if (isNaN(target.getTime())) return 999;
   target.setHours(0, 0, 0, 0);
   const diff = target.getTime() - now.getTime();
