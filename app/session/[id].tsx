@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, Pressable, TextInput, Modal } from 'react-native';
+import { View, Text, ScrollView, Pressable, TextInput, Modal, KeyboardAvoidingView, Platform } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -459,149 +460,160 @@ export default function SessionDetailScreen() {
         animationType="slide"
         onRequestClose={() => setShowJoinModal(false)}
       >
-        <View style={{
-          flex: 1,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          justifyContent: 'flex-end',
-        }}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1 }}
+        >
           <View style={{
-            backgroundColor: colors.surface,
-            borderTopLeftRadius: borderRadius.xl,
-            borderTopRightRadius: borderRadius.xl,
-            padding: spacing.lg,
-            paddingBottom: insets.bottom + spacing.lg,
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            justifyContent: 'flex-end',
           }}>
-            <View style={{
-              width: 40,
-              height: 4,
-              borderRadius: 2,
-              backgroundColor: colors.border,
-              alignSelf: 'center',
-              marginBottom: spacing.lg,
-            }} />
-            <Text style={{
-              fontSize: typography.sizes.xl,
-              fontWeight: typography.weights.bold,
-              color: colors.text,
-              marginBottom: spacing.lg,
-              textAlign: 'center',
-            }}>تأكيد الحضور</Text>
-
-            <View style={{ marginBottom: spacing.md }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.xs }}>
+            <ScrollView
+              bounces={false}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end' }}
+            >
+              <View style={{
+                backgroundColor: colors.surface,
+                borderTopLeftRadius: borderRadius.xl,
+                borderTopRightRadius: borderRadius.xl,
+                padding: spacing.lg,
+                paddingBottom: Math.max(insets.bottom, spacing.md) + spacing.lg,
+              }}>
+                <View style={{
+                  width: 40,
+                  height: 4,
+                  borderRadius: 2,
+                  backgroundColor: colors.border,
+                  alignSelf: 'center',
+                  marginBottom: spacing.lg,
+                }} />
                 <Text style={{
-                  fontSize: typography.sizes.sm,
-                  fontWeight: typography.weights.semibold,
-                  color: colors.text,
-                }}>وش بتجيب معك؟ (اللعبة)</Text>
-                <Pressable
-                  style={({ pressed }) => ({
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: spacing.xs,
-                    backgroundColor: colors.accent + '15',
-                    paddingHorizontal: spacing.sm + 2,
-                    paddingVertical: spacing.xs,
-                    borderRadius: borderRadius.round,
-                    opacity: pressed ? 0.7 : 1,
-                  })}
-                  onPress={() => {
-                    setShowJoinModal(false);
-                    setTimeout(() => setShowBGGPicker(true), 200);
-                  }}
-                >
-                  <MaterialIcons name="casino" size={14} color={colors.accent} />
-                  <Text style={{
-                    fontSize: typography.sizes.xs,
-                    fontWeight: typography.weights.semibold,
-                    color: colors.accent,
-                  }}>اختر من BGG</Text>
-                </Pressable>
-              </View>
-              <TextInput
-                style={{
-                  backgroundColor: colors.background,
-                  borderRadius: borderRadius.md,
-                  paddingHorizontal: spacing.md,
-                  paddingVertical: spacing.sm + 2,
-                  fontSize: typography.sizes.md,
-                  color: colors.text,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  textAlign: 'right',
-                }}
-                placeholder="مثال: كاتان، مونوبولي"
-                placeholderTextColor={colors.textLight}
-                value={gameBrought}
-                onChangeText={setGameBrought}
-              />
-            </View>
-
-            <View style={{ marginBottom: spacing.lg }}>
-              <Text style={{
-                fontSize: typography.sizes.sm,
-                fontWeight: typography.weights.semibold,
-                color: colors.text,
-                marginBottom: spacing.xs,
-              }}>الخفايف 🍿</Text>
-              <TextInput
-                style={{
-                  backgroundColor: colors.background,
-                  borderRadius: borderRadius.md,
-                  paddingHorizontal: spacing.md,
-                  paddingVertical: spacing.sm + 2,
-                  fontSize: typography.sizes.md,
-                  color: colors.text,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  textAlign: 'right',
-                }}
-                placeholder="مثال: قهوة، حلا، فطائر"
-                placeholderTextColor={colors.textLight}
-                value={snackBrought}
-                onChangeText={setSnackBrought}
-              />
-            </View>
-
-            <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-              <Pressable
-                style={({ pressed }) => [{
-                  flex: 1,
-                  paddingVertical: spacing.md,
-                  borderRadius: borderRadius.md,
-                  alignItems: 'center',
-                  backgroundColor: colors.background,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                }, pressed && { opacity: 0.7 }]}
-                onPress={() => setShowJoinModal(false)}
-              >
-                <Text style={{
-                  fontSize: typography.sizes.md,
-                  fontWeight: typography.weights.semibold,
-                  color: colors.text,
-                }}>إلغاء</Text>
-              </Pressable>
-              <Pressable
-                style={({ pressed }) => [{
-                  flex: 1,
-                  paddingVertical: spacing.md,
-                  borderRadius: borderRadius.md,
-                  alignItems: 'center',
-                  backgroundColor: colors.primary,
-                  ...shadows.sm,
-                }, pressed && { opacity: 0.7 }]}
-                onPress={handleJoin}
-              >
-                <Text style={{
-                  fontSize: typography.sizes.md,
+                  fontSize: typography.sizes.xl,
                   fontWeight: typography.weights.bold,
-                  color: '#FFFFFF',
-                }}>تأكيد</Text>
-              </Pressable>
-            </View>
+                  color: colors.text,
+                  marginBottom: spacing.lg,
+                  textAlign: 'center',
+                }}>تأكيد الحضور</Text>
+
+                <View style={{ marginBottom: spacing.md }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.xs }}>
+                    <Text style={{
+                      fontSize: typography.sizes.sm,
+                      fontWeight: typography.weights.semibold,
+                      color: colors.text,
+                    }}>وش بتجيب معك؟ (اللعبة)</Text>
+                    <Pressable
+                      style={({ pressed }) => ({
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: spacing.xs,
+                        backgroundColor: colors.accent + '15',
+                        paddingHorizontal: spacing.sm + 2,
+                        paddingVertical: spacing.xs,
+                        borderRadius: borderRadius.round,
+                        opacity: pressed ? 0.7 : 1,
+                      })}
+                      onPress={() => {
+                        setShowJoinModal(false);
+                        setTimeout(() => setShowBGGPicker(true), 200);
+                      }}
+                    >
+                      <MaterialIcons name="casino" size={14} color={colors.accent} />
+                      <Text style={{
+                        fontSize: typography.sizes.xs,
+                        fontWeight: typography.weights.semibold,
+                        color: colors.accent,
+                      }}>اختر من BGG</Text>
+                    </Pressable>
+                  </View>
+                  <TextInput
+                    style={{
+                      backgroundColor: colors.background,
+                      borderRadius: borderRadius.md,
+                      paddingHorizontal: spacing.md,
+                      paddingVertical: spacing.sm + 2,
+                      fontSize: typography.sizes.md,
+                      color: colors.text,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      textAlign: 'right',
+                    }}
+                    placeholder="مثال: كاتان، مونوبولي"
+                    placeholderTextColor={colors.textLight}
+                    value={gameBrought}
+                    onChangeText={setGameBrought}
+                  />
+                </View>
+
+                <View style={{ marginBottom: spacing.lg }}>
+                  <Text style={{
+                    fontSize: typography.sizes.sm,
+                    fontWeight: typography.weights.semibold,
+                    color: colors.text,
+                    marginBottom: spacing.xs,
+                  }}>الخفايف 🍿</Text>
+                  <TextInput
+                    style={{
+                      backgroundColor: colors.background,
+                      borderRadius: borderRadius.md,
+                      paddingHorizontal: spacing.md,
+                      paddingVertical: spacing.sm + 2,
+                      fontSize: typography.sizes.md,
+                      color: colors.text,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                      textAlign: 'right',
+                    }}
+                    placeholder="مثال: قهوة، حلا، فطائر"
+                    placeholderTextColor={colors.textLight}
+                    value={snackBrought}
+                    onChangeText={setSnackBrought}
+                  />
+                </View>
+
+                <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+                  <Pressable
+                    style={({ pressed }) => [{
+                      flex: 1,
+                      paddingVertical: spacing.md,
+                      borderRadius: borderRadius.md,
+                      alignItems: 'center',
+                      backgroundColor: colors.background,
+                      borderWidth: 1,
+                      borderColor: colors.border,
+                    }, pressed && { opacity: 0.7 }]}
+                    onPress={() => setShowJoinModal(false)}
+                  >
+                    <Text style={{
+                      fontSize: typography.sizes.md,
+                      fontWeight: typography.weights.semibold,
+                      color: colors.text,
+                    }}>إلغاء</Text>
+                  </Pressable>
+                  <Pressable
+                    style={({ pressed }) => [{
+                      flex: 1,
+                      paddingVertical: spacing.md,
+                      borderRadius: borderRadius.md,
+                      alignItems: 'center',
+                      backgroundColor: colors.primary,
+                      ...shadows.sm,
+                    }, pressed && { opacity: 0.7 }]}
+                    onPress={handleJoin}
+                  >
+                    <Text style={{
+                      fontSize: typography.sizes.md,
+                      fontWeight: typography.weights.bold,
+                      color: '#FFFFFF',
+                    }}>تأكيد</Text>
+                  </Pressable>
+                </View>
+              </View>
+            </ScrollView>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Picker Modal */}
