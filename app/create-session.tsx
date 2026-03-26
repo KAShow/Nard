@@ -3,11 +3,24 @@ import { View, Text, TextInput, ScrollView, Pressable, KeyboardAvoidingView, Pla
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '@/hooks/useAuth';
 import { useSessions } from '@/hooks/useSessions';
 import { spacing, borderRadius, typography } from '@/constants/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAlert } from '@/template';
+
+const FUNNY_TITLES = [
+  'معركة النرد الطاحنة',
+  'ليلة الانتقام والمكر',
+  'صراع العمالقة في نص الليل',
+  'جلسة تكسير الرؤوس (بالمحبة)',
+  'كش ملك.. أو النرد!',
+  'جلسة الضحك والدموع',
+  'تدمير الصداقات.. مرحباً!',
+  'جلسة الخداع الاستراتيجي',
+  'مين بيخسر اليوم؟',
+];
 
 export default function CreateSessionScreen() {
   const insets = useSafeAreaInsets();
@@ -17,19 +30,18 @@ export default function CreateSessionScreen() {
   const { showAlert } = useAlert();
   const { colors, shadows } = useTheme();
 
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [date, setDate] = useState('');
-  const [time, setTime] = useState('');
-  const [location, setLocation] = useState('');
-  const [locationUrl, setLocationUrl] = useState('');
+  const [title, setTitle] = useState(() => FUNNY_TITLES[Math.floor(Math.random() * FUNNY_TITLES.length)]);
+  const [dateObj, setDateObj] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [location, setLocation] = useState<'بيت البصري' | 'جراسياس'>('بيت البصري');
   const [maxPlayers, setMaxPlayers] = useState(8);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
-  const requiredFields = { title, date, time, location };
+  const requiredFields = { title };
   const filledCount = Object.values(requiredFields).filter(v => v.trim()).length;
-  const totalRequired = Object.keys(requiredFields).length;
-  const progressPercent = (filledCount / totalRequired) * 100;
+  // Location, Time, Date are always valid now
+  const progressPercent = (filledCount / 1) * 100;
 
   const markTouched = (field: string) => {
     setTouched(prev => ({ ...prev, [field]: true }));
@@ -39,11 +51,36 @@ export default function CreateSessionScreen() {
     return touched[field] && !value.trim();
   };
 
+  const handleDateChange = (event: any, selectedDate?: Date) => {
+    setShowDatePicker(false);
+    if (selectedDate) {
+      setDateObj(selectedDate);
+    }
+  };
+
+  const handleTimeChange = (event: any, selectedTime?: Date) => {
+    setShowTimePicker(false);
+    if (selectedTime) {
+      setDateObj(selectedTime);
+    }
+  };
+
+  const formatDate = (date: Date) => {
+    return date.toISOString().split('T')[0];
+  };
+
+  const formatTime = (date: Date) => {
+    const hours = date.getHours();
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    const ampm = hours >= 12 ? 'مساءً' : 'صباحاً';
+    return `${hours % 12 || 12}:${minutes} ${ampm}`;
+  };
+
   const handleCreate = async () => {
     if (!user) return;
 
-    if (!title.trim() || !date.trim() || !time.trim() || !location.trim()) {
-      setTouched({ title: true, date: true, time: true, location: true });
+    if (!title.trim()) {
+      setTouched({ title: true });
       showAlert('تنبيه', 'الرجاء ملء جميع الحقول المطلوبة');
       return;
     }
@@ -57,11 +94,10 @@ export default function CreateSessionScreen() {
       hostId: user.id,
       hostName: user.name,
       title: title.trim(),
-      description: description.trim(),
-      date: date.trim(),
-      time: time.trim(),
-      location: location.trim(),
-      locationUrl: locationUrl.trim() || undefined,
+      description: '', 
+      date: formatDate(dateObj),
+      time: formatTime(dateObj),
+      location: location,
       maxPlayers,
       status: 'upcoming',
     });
@@ -70,8 +106,6 @@ export default function CreateSessionScreen() {
     router.back();
   };
 
-  // I18nManager.isRTL is true, so 'row' flows Right-to-Left. 
-  // We place the Icon first so it appears on the Right.
   const SectionHeader = ({ icon, title, color, bgColor }: { icon: keyof typeof MaterialIcons.glyphMap, title: string, color: string, bgColor: string }) => (
     <View style={{
       flexDirection: 'row',
@@ -99,10 +133,11 @@ export default function CreateSessionScreen() {
   );
 
   const CustomInput = ({ 
-    label, value, onChangeText, placeholder, field, multiline = false, icon, keyboardType = 'default' 
+    label, value, onChangeText, placeholder, field, icon, editable = true, onPress
   }: any) => {
     const invalid = isFieldInvalid(field, value);
-    return (
+    
+    const InnerInput = (
       <View style={{ marginBottom: spacing.md }}>
         <Text style={{
           fontSize: typography.sizes.sm,
@@ -116,42 +151,40 @@ export default function CreateSessionScreen() {
         </Text>
         <View style={{
           flexDirection: 'row',
-          alignItems: multiline ? 'flex-start' : 'center',
-          backgroundColor: colors.surface,
+          alignItems: 'center',
+          backgroundColor: editable ? colors.surface : colors.surfaceLight,
           borderRadius: borderRadius.md,
           borderWidth: 1.5,
           borderColor: invalid ? colors.error : (value ? colors.primary + '50' : colors.border),
           paddingHorizontal: spacing.md,
-          minHeight: multiline ? 100 : 52,
+          minHeight: 52,
           ...shadows.sm,
         }}>
           {icon && (
             <MaterialIcons 
               name={icon} 
               size={20} 
-              color={invalid ? colors.error : (value ? colors.primary : colors.textLight)} 
-              style={{ marginEnd: spacing.sm, marginTop: multiline ? spacing.md : 0 }} 
+              color={invalid ? colors.error : (value && editable ? colors.primary : colors.textLight)} 
+              style={{ marginEnd: spacing.sm }} 
             />
           )}
           <TextInput
             style={{
               flex: 1,
               fontSize: typography.sizes.md,
-              color: colors.text,
+              color: editable ? colors.text : colors.textSecondary,
               textAlign: I18nManager.isRTL ? 'right' : 'right',
               paddingVertical: spacing.md,
-              textAlignVertical: multiline ? 'top' : 'center',
             }}
             placeholder={placeholder}
             placeholderTextColor={colors.textLight}
             value={value}
             onChangeText={onChangeText}
             onBlur={() => markTouched(field)}
-            multiline={multiline}
-            numberOfLines={multiline ? 4 : 1}
-            keyboardType={keyboardType}
+            editable={editable}
+            pointerEvents={editable ? 'auto' : 'none'}
           />
-          {value.trim() !== '' && !multiline && !invalid && (
+          {value.trim() !== '' && editable && !invalid && (
              <MaterialIcons name="check-circle" size={18} color={colors.success} style={{ marginStart: spacing.sm }} />
           )}
         </View>
@@ -162,13 +195,74 @@ export default function CreateSessionScreen() {
         )}
       </View>
     );
+
+    if (onPress) {
+      return (
+        <Pressable onPress={onPress}>
+          {InnerInput}
+        </Pressable>
+      );
+    }
+
+    return InnerInput;
   };
+
+  const LocationRadioOption = ({ title, selected }: { title: 'بيت البصري' | 'جراسياس', selected: boolean }) => (
+    <Pressable
+      onPress={() => setLocation(title)}
+      style={({ pressed }) => [{
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: selected ? colors.primary + '15' : colors.surface,
+        borderWidth: 1.5,
+        borderColor: selected ? colors.primary : colors.border,
+        borderRadius: borderRadius.md,
+        paddingVertical: spacing.md,
+        paddingHorizontal: spacing.sm,
+        ...shadows.sm,
+      }, pressed && { opacity: 0.8 }]}
+    >
+      <MaterialIcons 
+        name={selected ? "radio-button-checked" : "radio-button-unchecked"} 
+        size={20} 
+        color={selected ? colors.primary : colors.textLight} 
+        style={{ marginEnd: spacing.sm }}
+      />
+      <Text style={{
+        fontSize: typography.sizes.md,
+        fontWeight: selected ? typography.weights.bold : typography.weights.medium,
+        color: selected ? colors.primaryDark : colors.text,
+      }}>
+        {title}
+      </Text>
+    </Pressable>
+  );
 
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={{ flex: 1, backgroundColor: colors.background }}
     >
+      {showDatePicker && (
+        <DateTimePicker
+          value={dateObj}
+          mode="date"
+          display="default"
+          onChange={handleDateChange}
+        />
+      )}
+      
+      {showTimePicker && (
+        <DateTimePicker
+          value={dateObj}
+          mode="time"
+          display="default"
+          onChange={handleTimeChange}
+        />
+      )}
+
       {/* Progress Bar */}
       <View style={{ height: 4, backgroundColor: colors.divider }}>
         <View style={{
@@ -201,16 +295,6 @@ export default function CreateSessionScreen() {
           icon="title"
         />
 
-        <CustomInput 
-          label="الوصف" 
-          field="description" 
-          value={description} 
-          onChangeText={setDescription} 
-          placeholder="وصف الجلسة والألعاب المتوقعة..."
-          multiline={true}
-          icon="description"
-        />
-
         <SectionHeader 
           icon="place" 
           title="الوقت والمكان" 
@@ -223,42 +307,39 @@ export default function CreateSessionScreen() {
             <CustomInput 
               label="التاريخ *" 
               field="date" 
-              value={date} 
-              onChangeText={setDate} 
-              placeholder="2026-03-25"
+              value={formatDate(dateObj)} 
               icon="calendar-today"
+              editable={false}
+              onPress={() => setShowDatePicker(true)}
             />
           </View>
           <View style={{ flex: 1 }}>
             <CustomInput 
               label="الوقت *" 
               field="time" 
-              value={time} 
-              onChangeText={setTime} 
-              placeholder="7:00 مساءً"
+              value={formatTime(dateObj)} 
               icon="access-time"
+              editable={false}
+              onPress={() => setShowTimePicker(true)}
             />
           </View>
         </View>
 
-        <CustomInput 
-          label="المكان *" 
-          field="location" 
-          value={location} 
-          onChangeText={setLocation} 
-          placeholder="مثال: مقهى اللعبة، الرياض"
-          icon="location-on"
-        />
-
-        <CustomInput 
-          label="رابط الموقع (اختياري)" 
-          field="locationUrl" 
-          value={locationUrl} 
-          onChangeText={setLocationUrl} 
-          placeholder="رابط خرائط جوجل"
-          icon="link"
-          keyboardType="url"
-        />
+        <View style={{ marginBottom: spacing.md }}>
+          <Text style={{
+            fontSize: typography.sizes.sm,
+            fontWeight: typography.weights.semibold,
+            color: colors.textSecondary,
+            marginBottom: spacing.sm,
+            textAlign: 'right',
+          }}>
+            المكان *
+          </Text>
+          <View style={{ flexDirection: 'row', gap: spacing.md }}>
+            <LocationRadioOption title="بيت البصري" selected={location === 'بيت البصري'} />
+            <LocationRadioOption title="جراسياس" selected={location === 'جراسياس'} />
+          </View>
+        </View>
 
         <SectionHeader 
           icon="settings" 
