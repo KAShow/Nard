@@ -1,9 +1,8 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import { Tabs, useRouter } from 'expo-router';
+import { Tabs } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Platform, View, Pressable, Text } from 'react-native';
-import { useAuth } from '@/hooks/useAuth';
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { spacing } from '@/constants/theme';
 
@@ -16,8 +15,6 @@ const TAB_BAR_HEIGHT = 64;
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
-  const { user, loading } = useAuth();
-  const router = useRouter();
   const { colors, shadows } = useTheme();
 
   const tabBarBottom = useMemo(() => {
@@ -31,12 +28,6 @@ export default function TabLayout() {
   const sceneBottomPadding = useMemo(() => {
     return TAB_BAR_HEIGHT + tabBarBottom + 16;
   }, [tabBarBottom]);
-
-  useEffect(() => {
-    if (!loading && !user) {
-      router.replace('/login' as any);
-    }
-  }, [user, loading]);
 
   return (
     <Tabs
