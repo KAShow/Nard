@@ -235,31 +235,53 @@ export default function SessionDetailScreen() {
   };
 
   const handleStartSession = async () => {
-    if (!isHost) return;
+    if (!isHost) {
+      console.log('User is not host, cannot start session');
+      return;
+    }
     
+    console.log('Showing start session confirmation dialog');
     showAlert('بدء الجلسة', 'هل تريد بدء الجلسة الآن؟ سيتم إرسال إشعار للحضور.', [
       { text: 'إلغاء', style: 'cancel' },
       {
         text: 'بدء',
         onPress: async () => {
-          await startSession(session.id);
-          showAlert('تم!', 'بدأت الجلسة - تم إرسال إشعار للحضور');
+          try {
+            console.log('User confirmed - starting session:', session.id);
+            await startSession(session.id);
+            showAlert('تم!', 'بدأت الجلسة - تم إرسال إشعار للحضور');
+          } catch (error) {
+            console.error('Error in handleStartSession:', error);
+            const errorMessage = error instanceof Error ? error.message : 'فشل بدء الجلسة';
+            showAlert('خطأ', errorMessage);
+          }
         },
       },
     ]);
   };
 
   const handleEndSession = async () => {
-    if (!isHost) return;
+    if (!isHost) {
+      console.log('User is not host, cannot end session');
+      return;
+    }
     
+    console.log('Showing end session confirmation dialog');
     showAlert('إنهاء الجلسة', 'هل تريد إنهاء الجلسة؟', [
       { text: 'إلغاء', style: 'cancel' },
       {
         text: 'إنهاء',
         style: 'destructive',
         onPress: async () => {
-          await endSession(session.id, elapsedTime);
-          showAlert('تم!', 'انتهت الجلسة - يمكنك الآن التقييم');
+          try {
+            console.log('User confirmed - ending session:', session.id, 'elapsed:', elapsedTime);
+            await endSession(session.id, elapsedTime);
+            showAlert('تم!', 'انتهت الجلسة - يمكنك الآن التقييم');
+          } catch (error) {
+            console.error('Error in handleEndSession:', error);
+            const errorMessage = error instanceof Error ? error.message : 'فشل إنهاء الجلسة';
+            showAlert('خطأ', errorMessage);
+          }
         },
       },
     ]);

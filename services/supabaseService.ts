@@ -223,34 +223,50 @@ export async function getUserProfile(userId: string) {
 // ==================== SESSION CONTROL ====================
 
 export async function startSession(sessionId: string) {
-  const { error } = await supabase
+  const now = new Date().toISOString();
+  console.log('Starting session:', sessionId, 'at', now);
+  
+  const { data, error } = await supabase
     .from('sessions')
     .update({
       status: 'ongoing',
-      started_at: new Date().toISOString(),
+      started_at: now,
     })
-    .eq('id', sessionId);
+    .eq('id', sessionId)
+    .select();
 
   if (error) {
     console.error('Error starting session:', error);
-    throw error;
+    console.error('Error details:', JSON.stringify(error));
+    throw new Error(`فشل بدء الجلسة: ${error.message || 'خطأ غير معروف'}`);
   }
+  
+  console.log('Session started successfully:', data);
+  return data;
 }
 
 export async function endSession(sessionId: string, durationSeconds: number) {
-  const { error } = await supabase
+  const now = new Date().toISOString();
+  console.log('Ending session:', sessionId, 'at', now, 'duration:', durationSeconds);
+  
+  const { data, error } = await supabase
     .from('sessions')
     .update({
       status: 'completed',
-      ended_at: new Date().toISOString(),
+      ended_at: now,
       duration_seconds: durationSeconds,
     })
-    .eq('id', sessionId);
+    .eq('id', sessionId)
+    .select();
 
   if (error) {
     console.error('Error ending session:', error);
-    throw error;
+    console.error('Error details:', JSON.stringify(error));
+    throw new Error(`فشل إنهاء الجلسة: ${error.message || 'خطأ غير معروف'}`);
   }
+  
+  console.log('Session ended successfully:', data);
+  return data;
 }
 
 // ==================== FOOD ORDERS ====================
