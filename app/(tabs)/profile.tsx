@@ -10,10 +10,8 @@ import { useSessions } from '@/hooks/useSessions';
 import { useTheme } from '@/contexts/ThemeContext';
 import { spacing, borderRadius, typography } from '@/constants/theme';
 import { BadgeInfo } from '@/types';
-import { saveBGGCollection, loadBGGCollection, clearBGGCollection } from '@/services/bggService';
+import { saveBGGCollection, loadBGGCollection, clearBGGCollection, fetchBGGCollection, saveBGGUsername, loadBGGUsername } from '@/services/bggService';
 import { useAlert } from '@/template';
-
-const BGG_USERNAME_KEY = '@nard_bgg_username';
 
 const BADGES: BadgeInfo[] = [
   { id: 'king', name: 'ملك البورد جيمز', emoji: '👑', description: 'أحضر 10 ألعاب مختلفة' },
@@ -41,11 +39,13 @@ export default function ProfileScreen() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [bggGamesCount, setBggGamesCount] = useState(0);
   const [showImportModal, setShowImportModal] = useState(false);
-  const [importJson, setImportJson] = useState('');
+  const [bggUsername, setBggUsername] = useState('');
+  const [fetchStatus, setFetchStatus] = useState('');
   const [importing, setImporting] = useState(false);
 
   useEffect(() => {
     loadBGGCollection().then((games) => setBggGamesCount(games.length));
+    loadBGGUsername().then((name) => { if (name) setBggUsername(name); });
   }, []);
 
   if (!user) return null;
@@ -325,10 +325,27 @@ export default function ProfileScreen() {
                   gap: spacing.xs,
                   opacity: pressed ? 0.7 : 1,
                 })}
-                onPress={() => setShowImportModal(true)}
+                onPress={async () => {
+                  const username = await loadBGGUsername();
+                  if (!username) {
+                    setShowImportModal(true);
+                    return;
+                  }
+                  setImporting(true);
+                  try {
+                    const games = await fetchBGGCollection(username);
+                    const count = await saveBGGCollection(games);
+                    setBggGamesCount(count);
+                    showAlert('تم!', `تم تحديث ${count} لعبة`);
+                  } catch (e: any) {
+                    showAlert('خطأ', e.message || 'فشل التحديث');
+                  } finally {
+                    setImporting(false);
+                  }
+                }}
               >
                 <MaterialIcons name="refresh" size={18} color="#FFFFFF" />
-                <Text style={{ color: '#FFFFFF', fontWeight: typography.weights.semibold, fontSize: typography.sizes.sm }}>تحديث</Text>
+                <Text style={{ color: '#FFFFFF', fontWeight: typography.weights.semibold, fontSize: typography.sizes.sm }}>{importing ? 'جاري التحديث...' : 'تحديث'}</Text>
               </Pressable>
               <Pressable
                 style={({ pressed }) => ({
@@ -371,7 +388,7 @@ export default function ProfileScreen() {
               استيراد مجموعة BGG
             </Text>
             <Text style={{ fontSize: typography.sizes.xs, color: colors.textSecondary, marginTop: spacing.xs, textAlign: 'center' }}>
-              شغّل السكربت في كونسول BGG ثم الصق النتيجة هنا
+              أدخل اسم مستخدمك في BGG لجلب مجموعتك تلقائياً
             </Text>
           </Pressable>
         )}
@@ -385,13 +402,13 @@ export default function ProfileScreen() {
               <Text style={{ fontSize: typography.sizes.lg, fontWeight: typography.weights.bold, color: colors.text }}>
                 استيراد بيانات BGG
               </Text>
-              <Pressable onPress={() => { setShowImportModal(false); setImportJson(''); }}>
+              <Pressable onPress={() => { setShowImportModal(false); setFetchStatus(''); }}>
                 <MaterialIcons name="close" size={24} color={colors.textSecondary} />
               </Pressable>
             </View>
 
             <Text style={{ fontSize: typography.sizes.sm, color: colors.textSecondary, marginBottom: spacing.md }}>
-              الصق بيانات JSON من سكربت BGG:
+              أدخل اسم مستخدم BGG الخاص بك:
             </Text>
 
             <TextInput
@@ -399,49 +416,60 @@ export default function ProfileScreen() {
                 backgroundColor: colors.surface,
                 borderRadius: borderRadius.md,
                 padding: spacing.md,
-                fontSize: typography.sizes.sm,
+                fontSize: typography.sizes.md,
                 color: colors.text,
                 borderWidth: 1,
                 borderColor: colors.border,
-                minHeight: 150,
-                maxHeight: 300,
-                textAlignVertical: 'top',
-                fontFamily: 'monospace',
               }}
-              placeholder='[{"id":"12345","name":"Catan",...}]'
+              placeholder="alibasri"
               placeholderTextColor={colors.textLight}
-              value={importJson}
-              onChangeText={setImportJson}
-              multiline
+              value={bggUsername}
+              onChangeText={setBggUsername}
+              autoCapitalize="none"
+              autoCorrect={false}
             />
+
+            {fetchStatus ? (
+              <Text style={{ fontSize: typography.sizes.sm, color: colors.secondary, marginTop: spacing.sm, textAlign: 'center' }}>
+                {fetchStatus}
+              </Text>
+            ) : null}
 
             <Pressable
               style={({ pressed }) => ({
-                backgroundColor: importJson.trim() ? colors.primary : colors.surfaceLight,
+                backgroundColor: bggUsername.trim() ? colors.primary : colors.surfaceLight,
                 paddingVertical: spacing.md,
                 borderRadius: borderRadius.md,
                 alignItems: 'center',
                 marginTop: spacing.md,
                 opacity: pressed ? 0.7 : 1,
               })}
-              disabled={!importJson.trim() || importing}
+              disabled={!bggUsername.trim() || importing}
               onPress={async () => {
+                const username = bggUsername.trim();
+                if (!username) return;
                 setImporting(true);
+                setFetchStatus('');
                 try {
-                  const count = await saveBGGCollection(importJson.trim());
+                  await saveBGGUsername(username);
+                  const games = await fetchBGGCollection(username, (status) => {
+                    setFetchStatus(status);
+                  });
+                  const count = await saveBGGCollection(games);
                   setBggGamesCount(count);
                   setShowImportModal(false);
-                  setImportJson('');
+                  setFetchStatus('');
                   showAlert('تم!', `تم حفظ ${count} لعبة بنجاح`);
                 } catch (e: any) {
-                  showAlert('خطأ', e.message || 'فشل استيراد البيانات');
+                  setFetchStatus('');
+                  showAlert('خطأ', e.message || 'فشل جلب البيانات');
                 } finally {
                   setImporting(false);
                 }
               }}
             >
-              <Text style={{ color: importJson.trim() ? '#FFFFFF' : colors.textLight, fontWeight: typography.weights.bold, fontSize: typography.sizes.md }}>
-                {importing ? 'جاري الاستيراد...' : 'استيراد'}
+              <Text style={{ color: bggUsername.trim() ? '#FFFFFF' : colors.textLight, fontWeight: typography.weights.bold, fontSize: typography.sizes.md }}>
+                {importing ? 'جاري الجلب...' : 'جلب المجموعة'}
               </Text>
             </Pressable>
           </View>
