@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { View, Text, TextInput, ScrollView, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TextInput, ScrollView, Pressable, KeyboardAvoidingView, Platform, I18nManager } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -66,22 +66,103 @@ export default function CreateSessionScreen() {
       status: 'upcoming',
     });
 
-    showAlert('نجح', 'تم إنشاء الجلسة بنجاح');
+    showAlert('نجاح', 'تم إنشاء الجلسة بنجاح');
     router.back();
   };
 
-  const inputStyle = (invalid: boolean) => ({
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
-    fontSize: typography.sizes.md,
-    color: colors.text,
-    borderWidth: 1,
-    borderColor: invalid ? colors.error : colors.border,
-    textAlign: 'right' as const,
-    ...shadows.sm,
-  });
+  // I18nManager.isRTL is true, so 'row' flows Right-to-Left. 
+  // We place the Icon first so it appears on the Right.
+  const SectionHeader = ({ icon, title, color, bgColor }: { icon: keyof typeof MaterialIcons.glyphMap, title: string, color: string, bgColor: string }) => (
+    <View style={{
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: spacing.md,
+      marginTop: spacing.lg,
+      gap: spacing.sm,
+    }}>
+      <View style={{
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        backgroundColor: bgColor,
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+        <MaterialIcons name={icon} size={18} color={color} />
+      </View>
+      <Text style={{
+        fontSize: typography.sizes.lg,
+        fontWeight: typography.weights.bold,
+        color: colors.text,
+      }}>{title}</Text>
+    </View>
+  );
+
+  const CustomInput = ({ 
+    label, value, onChangeText, placeholder, field, multiline = false, icon, keyboardType = 'default' 
+  }: any) => {
+    const invalid = isFieldInvalid(field, value);
+    return (
+      <View style={{ marginBottom: spacing.md }}>
+        <Text style={{
+          fontSize: typography.sizes.sm,
+          fontWeight: typography.weights.semibold,
+          color: invalid ? colors.error : colors.textSecondary,
+          marginBottom: spacing.xs,
+          textAlign: 'right',
+          width: '100%',
+        }}>
+          {label}
+        </Text>
+        <View style={{
+          flexDirection: 'row',
+          alignItems: multiline ? 'flex-start' : 'center',
+          backgroundColor: colors.surface,
+          borderRadius: borderRadius.md,
+          borderWidth: 1.5,
+          borderColor: invalid ? colors.error : (value ? colors.primary + '50' : colors.border),
+          paddingHorizontal: spacing.md,
+          minHeight: multiline ? 100 : 52,
+          ...shadows.sm,
+        }}>
+          {icon && (
+            <MaterialIcons 
+              name={icon} 
+              size={20} 
+              color={invalid ? colors.error : (value ? colors.primary : colors.textLight)} 
+              style={{ marginEnd: spacing.sm, marginTop: multiline ? spacing.md : 0 }} 
+            />
+          )}
+          <TextInput
+            style={{
+              flex: 1,
+              fontSize: typography.sizes.md,
+              color: colors.text,
+              textAlign: I18nManager.isRTL ? 'right' : 'right',
+              paddingVertical: spacing.md,
+              textAlignVertical: multiline ? 'top' : 'center',
+            }}
+            placeholder={placeholder}
+            placeholderTextColor={colors.textLight}
+            value={value}
+            onChangeText={onChangeText}
+            onBlur={() => markTouched(field)}
+            multiline={multiline}
+            numberOfLines={multiline ? 4 : 1}
+            keyboardType={keyboardType}
+          />
+          {value.trim() !== '' && !multiline && !invalid && (
+             <MaterialIcons name="check-circle" size={18} color={colors.success} style={{ marginStart: spacing.sm }} />
+          )}
+        </View>
+        {invalid && (
+          <Text style={{ fontSize: typography.sizes.xs, color: colors.error, marginTop: spacing.xs, textAlign: 'right' }}>
+            هذا الحقل مطلوب
+          </Text>
+        )}
+      </View>
+    );
+  };
 
   return (
     <KeyboardAvoidingView
@@ -89,289 +170,125 @@ export default function CreateSessionScreen() {
       style={{ flex: 1, backgroundColor: colors.background }}
     >
       {/* Progress Bar */}
-      <View style={{
-        height: 3,
-        backgroundColor: colors.divider,
-      }}>
+      <View style={{ height: 4, backgroundColor: colors.divider }}>
         <View style={{
-          height: 3,
+          height: 4,
           width: `${progressPercent}%`,
           backgroundColor: progressPercent === 100 ? colors.success : colors.primary,
-          borderRadius: 2,
+          borderTopEndRadius: 2,
+          borderBottomEndRadius: 2,
         }} />
       </View>
 
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={{ padding: spacing.md, paddingBottom: insets.bottom + spacing.lg }}
+        contentContainerStyle={{ padding: spacing.lg, paddingBottom: insets.bottom + spacing.xl }}
+        showsVerticalScrollIndicator={false}
       >
-        {/* Section: معلومات الجلسة */}
-        <View style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          marginBottom: spacing.md,
-          gap: spacing.xs,
-        }}>
-          <View style={{
-            width: 28,
-            height: 28,
-            borderRadius: 14,
-            backgroundColor: colors.primary + '15',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}>
-            <MaterialIcons name="info-outline" size={16} color={colors.primary} />
-          </View>
-          <Text style={{
-            fontSize: typography.sizes.md,
-            fontWeight: typography.weights.semibold,
-            color: colors.text,
-          }}>معلومات الجلسة</Text>
-        </View>
+        <SectionHeader 
+          icon="info-outline" 
+          title="معلومات الجلسة" 
+          color={colors.primary} 
+          bgColor={colors.primary + '15'} 
+        />
 
-        <View style={{ marginBottom: spacing.md }}>
-          <Text style={{
-            fontSize: typography.sizes.sm,
-            fontWeight: typography.weights.semibold,
-            color: colors.text,
-            marginBottom: spacing.xs,
-          }}>عنوان الجلسة *</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <TextInput
-              style={[inputStyle(isFieldInvalid('title', title)), { flex: 1 }]}
-              placeholder="مثال: جلسة استراتيجية مسائية"
-              placeholderTextColor={colors.textLight}
-              value={title}
-              onChangeText={setTitle}
-              onBlur={() => markTouched('title')}
-            />
-            {title.trim() && (
-              <MaterialIcons name="check-circle" size={20} color={colors.success} style={{ position: 'absolute', left: spacing.sm }} />
-            )}
-          </View>
-          {isFieldInvalid('title', title) && (
-            <Text style={{ fontSize: typography.sizes.xs, color: colors.error, marginTop: spacing.xs }}>مطلوب</Text>
-          )}
-        </View>
+        <CustomInput 
+          label="عنوان الجلسة *" 
+          field="title" 
+          value={title} 
+          onChangeText={setTitle} 
+          placeholder="مثال: جلسة استراتيجية مسائية"
+          icon="title"
+        />
 
-        <View style={{ marginBottom: spacing.lg }}>
-          <Text style={{
-            fontSize: typography.sizes.sm,
-            fontWeight: typography.weights.semibold,
-            color: colors.text,
-            marginBottom: spacing.xs,
-          }}>الوصف</Text>
-          <TextInput
-            style={[inputStyle(false), { minHeight: 80, textAlignVertical: 'top' }]}
-            placeholder="وصف الجلسة والألعاب المتوقعة"
-            placeholderTextColor={colors.textLight}
-            value={description}
-            onChangeText={setDescription}
-            multiline
-            numberOfLines={3}
-          />
-        </View>
+        <CustomInput 
+          label="الوصف" 
+          field="description" 
+          value={description} 
+          onChangeText={setDescription} 
+          placeholder="وصف الجلسة والألعاب المتوقعة..."
+          multiline={true}
+          icon="description"
+        />
 
-        {/* Section: الوقت والمكان */}
-        <View style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          marginBottom: spacing.md,
-          gap: spacing.xs,
-        }}>
-          <View style={{
-            width: 28,
-            height: 28,
-            borderRadius: 14,
-            backgroundColor: colors.accent + '15',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}>
-            <MaterialIcons name="place" size={16} color={colors.accent} />
-          </View>
-          <Text style={{
-            fontSize: typography.sizes.md,
-            fontWeight: typography.weights.semibold,
-            color: colors.text,
-          }}>الوقت والمكان</Text>
-        </View>
+        <SectionHeader 
+          icon="place" 
+          title="الوقت والمكان" 
+          color={colors.accent} 
+          bgColor={colors.accent + '15'} 
+        />
 
-        <View style={{ flexDirection: 'row', gap: spacing.md, marginBottom: spacing.md }}>
+        <View style={{ flexDirection: 'row', gap: spacing.md }}>
           <View style={{ flex: 1 }}>
-            <Text style={{
-              fontSize: typography.sizes.sm,
-              fontWeight: typography.weights.semibold,
-              color: colors.text,
-              marginBottom: spacing.xs,
-            }}>التاريخ *</Text>
-            <TextInput
-              style={inputStyle(isFieldInvalid('date', date))}
+            <CustomInput 
+              label="التاريخ *" 
+              field="date" 
+              value={date} 
+              onChangeText={setDate} 
               placeholder="2026-03-25"
-              placeholderTextColor={colors.textLight}
-              value={date}
-              onChangeText={setDate}
-              onBlur={() => markTouched('date')}
+              icon="calendar-today"
             />
-            {isFieldInvalid('date', date) && (
-              <Text style={{ fontSize: typography.sizes.xs, color: colors.error, marginTop: spacing.xs }}>مطلوب</Text>
-            )}
           </View>
-
           <View style={{ flex: 1 }}>
-            <Text style={{
-              fontSize: typography.sizes.sm,
-              fontWeight: typography.weights.semibold,
-              color: colors.text,
-              marginBottom: spacing.xs,
-            }}>الوقت *</Text>
-            <TextInput
-              style={inputStyle(isFieldInvalid('time', time))}
+            <CustomInput 
+              label="الوقت *" 
+              field="time" 
+              value={time} 
+              onChangeText={setTime} 
               placeholder="7:00 مساءً"
-              placeholderTextColor={colors.textLight}
-              value={time}
-              onChangeText={setTime}
-              onBlur={() => markTouched('time')}
-            />
-            {isFieldInvalid('time', time) && (
-              <Text style={{ fontSize: typography.sizes.xs, color: colors.error, marginTop: spacing.xs }}>مطلوب</Text>
-            )}
-          </View>
-        </View>
-
-        <View style={{ marginBottom: spacing.md }}>
-          <Text style={{
-            fontSize: typography.sizes.sm,
-            fontWeight: typography.weights.semibold,
-            color: colors.text,
-            marginBottom: spacing.xs,
-          }}>المكان *</Text>
-          <TextInput
-            style={inputStyle(isFieldInvalid('location', location))}
-            placeholder="مثال: مقهى اللعبة، الرياض"
-            placeholderTextColor={colors.textLight}
-            value={location}
-            onChangeText={setLocation}
-            onBlur={() => markTouched('location')}
-          />
-          {isFieldInvalid('location', location) && (
-            <Text style={{ fontSize: typography.sizes.xs, color: colors.error, marginTop: spacing.xs }}>مطلوب</Text>
-          )}
-        </View>
-
-        <View style={{ marginBottom: spacing.lg }}>
-          <Text style={{
-            fontSize: typography.sizes.sm,
-            fontWeight: typography.weights.semibold,
-            color: colors.text,
-            marginBottom: spacing.xs,
-          }}>رابط الموقع (اختياري)</Text>
-          <View style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            backgroundColor: colors.surface,
-            borderRadius: borderRadius.md,
-            paddingHorizontal: spacing.md,
-            paddingVertical: spacing.sm + 2,
-            borderWidth: 1,
-            borderColor: colors.border,
-            ...shadows.sm,
-          }}>
-            <MaterialIcons name="link" size={20} color={colors.textSecondary} />
-            <TextInput
-              style={{
-                flex: 1,
-                fontSize: typography.sizes.md,
-                color: colors.text,
-                marginStart: spacing.sm,
-                textAlign: 'right',
-              }}
-              placeholder="رابط خرائط جوجل"
-              placeholderTextColor={colors.textLight}
-              value={locationUrl}
-              onChangeText={setLocationUrl}
-              autoCapitalize="none"
+              icon="access-time"
             />
           </View>
         </View>
 
-        {/* Section: الإعدادات */}
-        <View style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          marginBottom: spacing.md,
-          gap: spacing.xs,
-        }}>
-          <View style={{
-            width: 28,
-            height: 28,
-            borderRadius: 14,
-            backgroundColor: colors.secondary + '20',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}>
-            <MaterialIcons name="settings" size={16} color={colors.secondaryDark} />
-          </View>
-          <Text style={{
-            fontSize: typography.sizes.md,
-            fontWeight: typography.weights.semibold,
-            color: colors.text,
-          }}>الإعدادات</Text>
-        </View>
+        <CustomInput 
+          label="المكان *" 
+          field="location" 
+          value={location} 
+          onChangeText={setLocation} 
+          placeholder="مثال: مقهى اللعبة، الرياض"
+          icon="location-on"
+        />
 
-        <View style={{ marginBottom: spacing.xl }}>
+        <CustomInput 
+          label="رابط الموقع (اختياري)" 
+          field="locationUrl" 
+          value={locationUrl} 
+          onChangeText={setLocationUrl} 
+          placeholder="رابط خرائط جوجل"
+          icon="link"
+          keyboardType="url"
+        />
+
+        <SectionHeader 
+          icon="settings" 
+          title="الإعدادات" 
+          color={colors.secondaryDark} 
+          bgColor={colors.secondary + '25'} 
+        />
+
+        <View style={{ marginBottom: spacing.xl, backgroundColor: colors.surface, padding: spacing.lg, borderRadius: borderRadius.lg, borderWidth: 1, borderColor: colors.border, ...shadows.sm }}>
           <Text style={{
             fontSize: typography.sizes.sm,
             fontWeight: typography.weights.semibold,
-            color: colors.text,
-            marginBottom: spacing.sm,
+            color: colors.textSecondary,
+            marginBottom: spacing.md,
+            textAlign: 'right',
           }}>الحد الأقصى للاعبين *</Text>
+          
           <View style={{
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: spacing.lg,
+            gap: spacing.xl,
           }}>
-            <Pressable
-              onPress={() => setMaxPlayers(prev => Math.max(2, prev - 1))}
-              style={({ pressed }) => ({
-                width: 44,
-                height: 44,
-                borderRadius: 22,
-                backgroundColor: maxPlayers <= 2 ? colors.surfaceLight : colors.primary + '15',
-                alignItems: 'center',
-                justifyContent: 'center',
-                borderWidth: 1.5,
-                borderColor: maxPlayers <= 2 ? colors.border : colors.primary,
-                opacity: pressed ? 0.7 : 1,
-              })}
-              disabled={maxPlayers <= 2}
-            >
-              <MaterialIcons name="remove" size={24} color={maxPlayers <= 2 ? colors.textLight : colors.primary} />
-            </Pressable>
-
-            <View style={{
-              minWidth: 60,
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: colors.surface,
-              paddingVertical: spacing.sm,
-              paddingHorizontal: spacing.lg,
-              borderRadius: borderRadius.md,
-              ...shadows.sm,
-            }}>
-              <Text style={{
-                fontSize: typography.sizes.xxl,
-                fontWeight: typography.weights.bold,
-                color: colors.text,
-              }}>{maxPlayers}</Text>
-            </View>
-
+            {/* 1st Element in RTL row starts on RIGHT: This should be (+) */}
             <Pressable
               onPress={() => setMaxPlayers(prev => Math.min(20, prev + 1))}
               style={({ pressed }) => ({
-                width: 44,
-                height: 44,
-                borderRadius: 22,
+                width: 48,
+                height: 48,
+                borderRadius: 24,
                 backgroundColor: maxPlayers >= 20 ? colors.surfaceLight : colors.primary + '15',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -381,7 +298,44 @@ export default function CreateSessionScreen() {
               })}
               disabled={maxPlayers >= 20}
             >
-              <MaterialIcons name="add" size={24} color={maxPlayers >= 20 ? colors.textLight : colors.primary} />
+              <MaterialIcons name="add" size={26} color={maxPlayers >= 20 ? colors.textLight : colors.primary} />
+            </Pressable>
+
+            {/* 2nd Element: Number */}
+            <View style={{
+              width: 70,
+              height: 60,
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: colors.background,
+              borderRadius: borderRadius.md,
+              borderWidth: 1,
+              borderColor: colors.primary + '30',
+            }}>
+              <Text style={{
+                fontSize: typography.sizes.hero,
+                fontWeight: typography.weights.bold,
+                color: colors.primaryDark,
+              }}>{maxPlayers}</Text>
+            </View>
+
+            {/* 3rd Element: (-) on LEFT */}
+            <Pressable
+              onPress={() => setMaxPlayers(prev => Math.max(2, prev - 1))}
+              style={({ pressed }) => ({
+                width: 48,
+                height: 48,
+                borderRadius: 24,
+                backgroundColor: maxPlayers <= 2 ? colors.surfaceLight : colors.primary + '15',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderWidth: 1.5,
+                borderColor: maxPlayers <= 2 ? colors.border : colors.primary,
+                opacity: pressed ? 0.7 : 1,
+              })}
+              disabled={maxPlayers <= 2}
+            >
+              <MaterialIcons name="remove" size={26} color={maxPlayers <= 2 ? colors.textLight : colors.primary} />
             </Pressable>
           </View>
         </View>
@@ -390,22 +344,23 @@ export default function CreateSessionScreen() {
         <Pressable
           style={({ pressed }) => [{
             flexDirection: 'row',
-            backgroundColor: colors.primary,
-            paddingVertical: spacing.md + 2,
+            backgroundColor: progressPercent === 100 ? colors.primary : colors.primaryLight,
+            paddingVertical: spacing.md + 4,
             paddingHorizontal: spacing.lg,
             borderRadius: borderRadius.lg,
             alignItems: 'center',
             justifyContent: 'center',
+            marginBottom: spacing.xxl,
             ...shadows.md,
           }, pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] }]}
           onPress={handleCreate}
         >
-          <MaterialIcons name="add-circle" size={24} color="#FFFFFF" />
+          {/* In RTL, the first element goes to the right, followed by text. But we want Icon text -> or text icon? Let's just keep standard Icon then Text, which looks great universally if marginEnd is on Icon */}
+          <MaterialIcons name="event-available" size={24} color="#FFFFFF" style={{ marginEnd: spacing.sm }} />
           <Text style={{
             fontSize: typography.sizes.lg,
             fontWeight: typography.weights.bold,
             color: '#FFFFFF',
-            marginStart: spacing.sm,
           }}>إنشاء الجلسة</Text>
         </Pressable>
       </ScrollView>
