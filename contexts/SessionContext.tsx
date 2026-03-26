@@ -7,6 +7,7 @@ interface SessionContextType {
   sessions: Session[];
   isLoading: boolean;
   createSession: (session: Omit<Session, 'id' | 'attendees' | 'ratings' | 'createdAt'>) => Promise<void>;
+  deleteSession: (sessionId: string) => Promise<void>;
   joinSession: (sessionId: string, attendee: Attendee) => Promise<void>;
   leaveSession: (sessionId: string, userId: string) => Promise<void>;
   rateSession: (sessionId: string, userId: string, emoji: string) => Promise<void>;
@@ -56,6 +57,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       await loadSessions(); // Refresh list
     } catch (error) {
       console.error('Failed to create session:', error);
+      throw error;
+    }
+  };
+
+  const deleteSession = async (sessionId: string) => {
+    try {
+      await supabaseService.deleteSession(sessionId);
+      await loadSessions(); // Refresh list
+    } catch (error) {
+      console.error('Failed to delete session:', error);
       throw error;
     }
   };
@@ -176,6 +187,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         sessions,
         isLoading,
         createSession,
+        deleteSession,
         joinSession,
         leaveSession,
         rateSession,

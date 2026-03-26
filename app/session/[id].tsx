@@ -39,6 +39,7 @@ export default function SessionDetailScreen() {
     rateSession, 
     startSession, 
     endSession,
+    deleteSession,
     addFoodOrder,
     updateFoodOrder,
     deleteFoodOrder,
@@ -279,6 +280,35 @@ export default function SessionDetailScreen() {
         },
       },
     ]);
+  };
+
+  const handleDeleteSession = async () => {
+    if (!isHost) {
+      return;
+    }
+    
+    showAlert(
+      'حذف الجلسة', 
+      'هل أنت متأكد من حذف هذه الجلسة؟ لا يمكن التراجع عن هذا الإجراء.', 
+      [
+        { text: 'إلغاء', style: 'cancel' },
+        {
+          text: 'حذف',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await deleteSession(session.id);
+              showAlert('تم!', 'تم حذف الجلسة بنجاح');
+              router.back();
+            } catch (error) {
+              console.error('Error in handleDeleteSession:', error);
+              const errorMessage = error instanceof Error ? error.message : 'فشل حذف الجلسة';
+              showAlert('خطأ', errorMessage);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleAddFoodOrder = async () => {
@@ -1011,6 +1041,35 @@ export default function SessionDetailScreen() {
               ))}
             </View>
           )}
+        </View>
+      )}
+
+      {/* Delete Session Button (Host only, not ongoing) */}
+      {isHost && !isOngoing && (
+        <View style={{ marginBottom: spacing.md }}>
+          <Pressable
+            style={({ pressed }) => [{
+              flexDirection: 'row',
+              backgroundColor: colors.surface,
+              borderWidth: 1.5,
+              borderColor: colors.error,
+              paddingVertical: spacing.md,
+              paddingHorizontal: spacing.lg,
+              borderRadius: borderRadius.lg,
+              alignItems: 'center',
+              justifyContent: 'center',
+              ...shadows.sm,
+            }, pressed && { opacity: 0.7, backgroundColor: colors.error + '08' }]}
+            onPress={handleDeleteSession}
+          >
+            <MaterialIcons name="delete-forever" size={24} color={colors.error} />
+            <Text style={{
+              fontSize: typography.sizes.lg,
+              fontWeight: typography.weights.semibold,
+              color: colors.error,
+              marginStart: spacing.sm,
+            }}>حذف الجلسة</Text>
+          </Pressable>
         </View>
       )}
 

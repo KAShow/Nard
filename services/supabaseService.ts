@@ -140,6 +140,18 @@ export async function updateSessionStatus(sessionId: string, status: 'upcoming' 
   }
 }
 
+export async function deleteSession(sessionId: string) {
+  const { error } = await supabase
+    .from('sessions')
+    .delete()
+    .eq('id', sessionId);
+
+  if (error) {
+    console.error('Error deleting session:', error);
+    throw new Error(`فشل حذف الجلسة: ${error.message || 'خطأ غير معروف'}`);
+  }
+}
+
 // ==================== ATTENDEES ====================
 
 export async function addAttendee(sessionId: string, attendee: Attendee) {
