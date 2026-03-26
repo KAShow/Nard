@@ -298,8 +298,10 @@ export default function SessionDetailScreen() {
           onPress: async () => {
             try {
               await deleteSession(session.id);
-              showAlert('تم!', 'تم حذف الجلسة بنجاح');
-              router.back();
+              router.replace('/(tabs)');
+              setTimeout(() => {
+                showAlert('تم!', 'تم حذف الجلسة بنجاح');
+              }, 300);
             } catch (error) {
               console.error('Error in handleDeleteSession:', error);
               const errorMessage = error instanceof Error ? error.message : 'فشل حذف الجلسة';
