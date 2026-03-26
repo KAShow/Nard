@@ -21,6 +21,11 @@ export interface Session {
   ratings: SessionRating[];
   status: 'upcoming' | 'ongoing' | 'completed';
   createdAt: string;
+  startedAt?: string;
+  endedAt?: string;
+  durationSeconds?: number;
+  foodOrders?: FoodOrder[];
+  gameVotes?: GameVote[];
 }
 
 export interface Attendee {
@@ -59,4 +64,27 @@ export interface BadgeInfo {
   name: string;
   emoji: string;
   description: string;
+}
+
+export interface FoodOrder {
+  id: string;
+  sessionId: string;
+  userId: string;
+  userName: string;
+  orderText: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GameVote {
+  sessionId: string;
+  userId: string;
+  gameName: string;
+  createdAt: string;
+}
+
+export interface GameVoteResult {
+  gameName: string;
+  voteCount: number;
+  voters: string[];
 }

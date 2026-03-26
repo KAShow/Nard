@@ -1,5 +1,5 @@
 import { getSupabaseClient } from '@/template';
-import { Session, Attendee, SessionRating } from '@/types';
+import { Session, Attendee, SessionRating, FoodOrder, GameVote, GameVoteResult } from '@/types';
 
 const supabase = getSupabaseClient();
 
@@ -33,6 +33,19 @@ export async function fetchSessions() {
     .select('*')
     .in('session_id', sessionIds);
 
+  // Fetch food orders for all sessions
+  const { data: foodOrdersData } = await supabase
+    .from('food_orders')
+    .select('*')
+    .in('session_id', sessionIds)
+    .order('created_at', { ascending: true });
+
+  // Fetch game votes for all sessions
+  const { data: gameVotesData } = await supabase
+    .from('game_votes')
+    .select('*')
+    .in('session_id', sessionIds);
+
   // Combine data
   const sessions: Session[] = sessionsData.map(session => ({
     id: session.id,
@@ -61,6 +74,28 @@ export async function fetchSessions() {
       .map(r => ({
         userId: r.user_id,
         emoji: r.emoji,
+      })),
+    startedAt: session.started_at,
+    endedAt: session.ended_at,
+    durationSeconds: session.duration_seconds,
+    foodOrders: (foodOrdersData || [])
+      .filter(f => f.session_id === session.id)
+      .map(f => ({
+        id: f.id,
+        sessionId: f.session_id,
+        userId: f.user_id,
+        userName: f.user_name,
+        orderText: f.order_text,
+        createdAt: f.created_at,
+        updatedAt: f.updated_at,
+      })),
+    gameVotes: (gameVotesData || [])
+      .filter(v => v.session_id === session.id)
+      .map(v => ({
+        sessionId: v.session_id,
+        userId: v.user_id,
+        gameName: v.game_name,
+        createdAt: v.created_at,
       })),
   }));
 
@@ -183,4 +218,131 @@ export async function getUserProfile(userId: string) {
   }
 
   return data;
+}
+
+// ==================== SESSION CONTROL ====================
+
+export async function startSession(sessionId: string) {
+  const { error } = await supabase
+    .from('sessions')
+    .update({
+      status: 'ongoing',
+      started_at: new Date().toISOString(),
+    })
+    .eq('id', sessionId);
+
+  if (error) {
+    console.error('Error starting session:', error);
+    throw error;
+  }
+}
+
+export async function endSession(sessionId: string, durationSeconds: number) {
+  const { error } = await supabase
+    .from('sessions')
+    .update({
+      status: 'completed',
+      ended_at: new Date().toISOString(),
+      duration_seconds: durationSeconds,
+    })
+    .eq('id', sessionId);
+
+  if (error) {
+    console.error('Error ending session:', error);
+    throw error;
+  }
+}
+
+// ==================== FOOD ORDERS ====================
+
+export async function addFoodOrder(sessionId: string, userId: string, userName: string, orderText: string) {
+  const { error } = await supabase
+    .from('food_orders')
+    .insert({
+      session_id: sessionId,
+      user_id: userId,
+      user_name: userName,
+      order_text: orderText,
+    });
+
+  if (error) {
+    console.error('Error adding food order:', error);
+    throw error;
+  }
+
+  // Update user's last food order
+  await supabase
+    .from('user_profiles')
+    .update({ last_food_order: orderText })
+    .eq('id', userId);
+}
+
+export async function updateFoodOrder(orderId: string, orderText: string) {
+  const { error } = await supabase
+    .from('food_orders')
+    .update({ order_text: orderText })
+    .eq('id', orderId);
+
+  if (error) {
+    console.error('Error updating food order:', error);
+    throw error;
+  }
+}
+
+export async function deleteFoodOrder(orderId: string) {
+  const { error } = await supabase
+    .from('food_orders')
+    .delete()
+    .eq('id', orderId);
+
+  if (error) {
+    console.error('Error deleting food order:', error);
+    throw error;
+  }
+}
+
+// ==================== GAME VOTES ====================
+
+export async function addGameVote(sessionId: string, userId: string, gameName: string) {
+  const { error } = await supabase
+    .from('game_votes')
+    .insert({
+      session_id: sessionId,
+      user_id: userId,
+      game_name: gameName,
+    });
+
+  if (error) {
+    console.error('Error adding game vote:', error);
+    throw error;
+  }
+}
+
+export async function removeGameVote(sessionId: string, userId: string, gameName: string) {
+  const { error } = await supabase
+    .from('game_votes')
+    .delete()
+    .eq('session_id', sessionId)
+    .eq('user_id', userId)
+    .eq('game_name', gameName);
+
+  if (error) {
+    console.error('Error removing game vote:', error);
+    throw error;
+  }
+}
+
+export async function getUserVoteCount(sessionId: string, userId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from('game_votes')
+    .select('*', { count: 'exact', head: true })
+    .eq('session_id', sessionId)
+    .eq('user_id', userId);
+
+  if (error) {
+    console.error('Error getting vote count:', error);
+    return 0;
+  }
+
+  return count || 0;
 }

@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
-import { Session, Attendee } from '@/types';
+import { Session, Attendee, FoodOrder, GameVote } from '@/types';
 import { useAuth } from '@/hooks/useAuth';
 import * as supabaseService from '@/services/supabaseService';
 
@@ -11,6 +11,14 @@ interface SessionContextType {
   leaveSession: (sessionId: string, userId: string) => Promise<void>;
   rateSession: (sessionId: string, userId: string, emoji: string) => Promise<void>;
   refreshSessions: () => Promise<void>;
+  startSession: (sessionId: string) => Promise<void>;
+  endSession: (sessionId: string, durationSeconds: number) => Promise<void>;
+  addFoodOrder: (sessionId: string, userId: string, userName: string, orderText: string) => Promise<void>;
+  updateFoodOrder: (orderId: string, orderText: string) => Promise<void>;
+  deleteFoodOrder: (orderId: string) => Promise<void>;
+  addGameVote: (sessionId: string, userId: string, gameName: string) => Promise<void>;
+  removeGameVote: (sessionId: string, userId: string, gameName: string) => Promise<void>;
+  getUserVoteCount: (sessionId: string, userId: string) => Promise<number>;
 }
 
 export const SessionContext = createContext<SessionContextType | undefined>(undefined);
@@ -86,6 +94,80 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     await loadSessions();
   };
 
+  const startSession = async (sessionId: string) => {
+    try {
+      await supabaseService.startSession(sessionId);
+      await loadSessions();
+    } catch (error) {
+      console.error('Failed to start session:', error);
+      throw error;
+    }
+  };
+
+  const endSession = async (sessionId: string, durationSeconds: number) => {
+    try {
+      await supabaseService.endSession(sessionId, durationSeconds);
+      await loadSessions();
+    } catch (error) {
+      console.error('Failed to end session:', error);
+      throw error;
+    }
+  };
+
+  const addFoodOrder = async (sessionId: string, userId: string, userName: string, orderText: string) => {
+    try {
+      await supabaseService.addFoodOrder(sessionId, userId, userName, orderText);
+      await loadSessions();
+    } catch (error) {
+      console.error('Failed to add food order:', error);
+      throw error;
+    }
+  };
+
+  const updateFoodOrder = async (orderId: string, orderText: string) => {
+    try {
+      await supabaseService.updateFoodOrder(orderId, orderText);
+      await loadSessions();
+    } catch (error) {
+      console.error('Failed to update food order:', error);
+      throw error;
+    }
+  };
+
+  const deleteFoodOrder = async (orderId: string) => {
+    try {
+      await supabaseService.deleteFoodOrder(orderId);
+      await loadSessions();
+    } catch (error) {
+      console.error('Failed to delete food order:', error);
+      throw error;
+    }
+  };
+
+  const addGameVote = async (sessionId: string, userId: string, gameName: string) => {
+    try {
+      await supabaseService.addGameVote(sessionId, userId, gameName);
+      await loadSessions();
+    } catch (error) {
+      console.error('Failed to add game vote:', error);
+      throw error;
+    }
+  };
+
+  const removeGameVote = async (sessionId: string, userId: string, gameName: string) => {
+    try {
+      await supabaseService.removeGameVote(sessionId, userId, gameName);
+      await loadSessions();
+    } catch (error) {
+      console.error('Failed to remove game vote:', error);
+      throw error;
+    }
+  };
+
+  const getUserVoteCount = async (sessionId: string, userId: string) => {
+    return await supabaseService.getUserVoteCount(sessionId, userId);
+  };
+
   return (
     <SessionContext.Provider
       value={{
@@ -96,6 +178,14 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         leaveSession,
         rateSession,
         refreshSessions,
+        startSession,
+        endSession,
+        addFoodOrder,
+        updateFoodOrder,
+        deleteFoodOrder,
+        addGameVote,
+        removeGameVote,
+        getUserVoteCount,
       }}
     >
       {children}
