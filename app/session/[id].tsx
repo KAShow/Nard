@@ -236,18 +236,15 @@ export default function SessionDetailScreen() {
 
   const handleStartSession = async () => {
     if (!isHost) {
-      console.log('User is not host, cannot start session');
       return;
     }
     
-    console.log('Showing start session confirmation dialog');
     showAlert('بدء الجلسة', 'هل تريد بدء الجلسة الآن؟ سيتم إرسال إشعار للحضور.', [
       { text: 'إلغاء', style: 'cancel' },
       {
         text: 'بدء',
         onPress: async () => {
           try {
-            console.log('User confirmed - starting session:', session.id);
             await startSession(session.id);
             showAlert('تم!', 'بدأت الجلسة - تم إرسال إشعار للحضور');
           } catch (error) {
@@ -262,11 +259,9 @@ export default function SessionDetailScreen() {
 
   const handleEndSession = async () => {
     if (!isHost) {
-      console.log('User is not host, cannot end session');
       return;
     }
     
-    console.log('Showing end session confirmation dialog');
     showAlert('إنهاء الجلسة', 'هل تريد إنهاء الجلسة؟', [
       { text: 'إلغاء', style: 'cancel' },
       {
@@ -274,7 +269,6 @@ export default function SessionDetailScreen() {
         style: 'destructive',
         onPress: async () => {
           try {
-            console.log('User confirmed - ending session:', session.id, 'elapsed:', elapsedTime);
             await endSession(session.id, elapsedTime);
             showAlert('تم!', 'انتهت الجلسة - يمكنك الآن التقييم');
           } catch (error) {

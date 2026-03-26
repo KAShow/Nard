@@ -96,10 +96,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const startSession = async (sessionId: string) => {
     try {
-      console.log('Context: Starting session', sessionId);
       await supabaseService.startSession(sessionId);
       await loadSessions();
-      console.log('Context: Session started successfully');
     } catch (error) {
       console.error('Context: Failed to start session:', error);
       const errorMessage = error instanceof Error ? error.message : 'خطأ غير معروف';
@@ -109,10 +107,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const endSession = async (sessionId: string, durationSeconds: number) => {
     try {
-      console.log('Context: Ending session', sessionId, 'duration:', durationSeconds);
       await supabaseService.endSession(sessionId, durationSeconds);
       await loadSessions();
-      console.log('Context: Session ended successfully');
     } catch (error) {
       console.error('Context: Failed to end session:', error);
       const errorMessage = error instanceof Error ? error.message : 'خطأ غير معروف';

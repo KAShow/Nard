@@ -224,7 +224,6 @@ export async function getUserProfile(userId: string) {
 
 export async function startSession(sessionId: string) {
   const now = new Date().toISOString();
-  console.log('Starting session:', sessionId, 'at', now);
   
   const { data, error } = await supabase
     .from('sessions')
@@ -237,17 +236,14 @@ export async function startSession(sessionId: string) {
 
   if (error) {
     console.error('Error starting session:', error);
-    console.error('Error details:', JSON.stringify(error));
     throw new Error(`فشل بدء الجلسة: ${error.message || 'خطأ غير معروف'}`);
   }
   
-  console.log('Session started successfully:', data);
   return data;
 }
 
 export async function endSession(sessionId: string, durationSeconds: number) {
   const now = new Date().toISOString();
-  console.log('Ending session:', sessionId, 'at', now, 'duration:', durationSeconds);
   
   const { data, error } = await supabase
     .from('sessions')
@@ -261,11 +257,9 @@ export async function endSession(sessionId: string, durationSeconds: number) {
 
   if (error) {
     console.error('Error ending session:', error);
-    console.error('Error details:', JSON.stringify(error));
     throw new Error(`فشل إنهاء الجلسة: ${error.message || 'خطأ غير معروف'}`);
   }
   
-  console.log('Session ended successfully:', data);
   return data;
 }
 

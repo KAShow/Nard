@@ -31,7 +31,7 @@ export default function LoginScreen() {
       return;
     }
 
-    const { error } = await signInWithPassword(email.trim(), password);
+    const { error } = await signInWithPassword(email.trim(), password.trim());
     if (error) {
       showAlert('خطأ', error);
       return;

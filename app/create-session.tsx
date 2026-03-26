@@ -40,10 +40,7 @@ export default function CreateSessionScreen() {
   const [maxPlayers, setMaxPlayers] = useState(8);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
-  const requiredFields = { title };
-  const filledCount = Object.values(requiredFields).filter(v => v.trim()).length;
-  // Location, Time, Date are always valid now
-  const progressPercent = (filledCount / 1) * 100;
+  const progressPercent = title.trim() ? 100 : 0;
 
   const markTouched = (field: string) => {
     setTouched(prev => ({ ...prev, [field]: true }));
@@ -53,13 +50,13 @@ export default function CreateSessionScreen() {
     return touched[field] && !value.trim();
   };
 
-  const handleDateChange = (event: any, selectedDate?: Date) => {
+  const handleDateChange = (event: { type: string }, selectedDate?: Date) => {
     if (selectedDate) {
       setTempDate(selectedDate);
     }
   };
 
-  const handleTimeChange = (event: any, selectedTime?: Date) => {
+  const handleTimeChange = (event: { type: string }, selectedTime?: Date) => {
     if (selectedTime) {
       setTempDate(selectedTime);
     }
@@ -489,6 +486,7 @@ export default function CreateSessionScreen() {
               mode="date"
               display="spinner"
               onChange={handleDateChange}
+              minimumDate={new Date()}
               style={{ height: 200 }}
             />
 

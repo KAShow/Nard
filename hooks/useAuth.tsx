@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useAuth as useSupabaseAuth } from '@/template';
+import { useAuth as useSupabaseAuth, getSupabaseClient } from '@/template';
 import { User } from '@/types';
 
 export function useAuth() {
@@ -22,8 +22,6 @@ export function useAuth() {
     }
 
     try {
-      // Use the underlying Supabase client to call the delete function
-      const { getSupabaseClient } = require('@/template');
       const supabase = getSupabaseClient();
       
       // Call the RPC function to delete the user's account
