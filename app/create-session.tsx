@@ -33,6 +33,7 @@ export default function CreateSessionScreen() {
 
   const [title, setTitle] = useState(() => FUNNY_TITLES[Math.floor(Math.random() * FUNNY_TITLES.length)]);
   const [dateObj, setDateObj] = useState(new Date());
+  const [tempDate, setTempDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [location, setLocation] = useState<'بيت البصري' | 'جراسياس'>('بيت البصري');
@@ -53,17 +54,35 @@ export default function CreateSessionScreen() {
   };
 
   const handleDateChange = (event: any, selectedDate?: Date) => {
-    setShowDatePicker(false);
     if (selectedDate) {
-      setDateObj(selectedDate);
+      setTempDate(selectedDate);
     }
   };
 
   const handleTimeChange = (event: any, selectedTime?: Date) => {
-    setShowTimePicker(false);
     if (selectedTime) {
-      setDateObj(selectedTime);
+      setTempDate(selectedTime);
     }
+  };
+
+  const confirmDatePicker = () => {
+    setDateObj(tempDate);
+    setShowDatePicker(false);
+  };
+
+  const confirmTimePicker = () => {
+    setDateObj(tempDate);
+    setShowTimePicker(false);
+  };
+
+  const openDatePicker = () => {
+    setTempDate(dateObj);
+    setShowDatePicker(true);
+  };
+
+  const openTimePicker = () => {
+    setTempDate(dateObj);
+    setShowTimePicker(true);
   };
 
   const formatDate = (date: Date) => {
@@ -252,23 +271,6 @@ export default function CreateSessionScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={{ flex: 1, backgroundColor: colors.background }}
     >
-      {showDatePicker && (
-        <DateTimePicker
-          value={dateObj}
-          mode="date"
-          display="default"
-          onChange={handleDateChange}
-        />
-      )}
-      
-      {showTimePicker && (
-        <DateTimePicker
-          value={dateObj}
-          mode="time"
-          display="default"
-          onChange={handleTimeChange}
-        />
-      )}
 
       {/* Progress Bar */}
       <View style={{ height: 4, backgroundColor: colors.divider }}>
@@ -317,7 +319,7 @@ export default function CreateSessionScreen() {
               value={formatDate(dateObj)} 
               icon="calendar-today"
               editable={false}
-              onPress={() => setShowDatePicker(true)}
+              onPress={openDatePicker}
             />
           </View>
           <View style={{ flex: 1 }}>
@@ -327,7 +329,7 @@ export default function CreateSessionScreen() {
               value={formatTime(dateObj)} 
               icon="access-time"
               editable={false}
-              onPress={() => setShowTimePicker(true)}
+              onPress={openTimePicker}
             />
           </View>
         </View>
@@ -452,6 +454,162 @@ export default function CreateSessionScreen() {
           }}>إنشاء الجلسة</Text>
         </Pressable>
       </ScrollView>
+
+      {/* Date Picker Modal */}
+      {showDatePicker && (
+        <View style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000,
+        }}>
+          <View style={{
+            backgroundColor: colors.surface,
+            borderRadius: borderRadius.xl,
+            padding: spacing.lg,
+            width: '85%',
+            maxWidth: 400,
+            ...shadows.xl,
+          }}>
+            <Text style={{
+              fontSize: typography.sizes.xl,
+              fontWeight: typography.weights.bold,
+              color: colors.text,
+              marginBottom: spacing.lg,
+              textAlign: 'center',
+            }}>اختر التاريخ</Text>
+            
+            <DateTimePicker
+              value={tempDate}
+              mode="date"
+              display="spinner"
+              onChange={handleDateChange}
+              style={{ height: 200 }}
+            />
+
+            <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.lg }}>
+              <Pressable
+                style={({ pressed }) => [{
+                  flex: 1,
+                  paddingVertical: spacing.md,
+                  borderRadius: borderRadius.md,
+                  alignItems: 'center',
+                  backgroundColor: colors.background,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }, pressed && { opacity: 0.7 }]}
+                onPress={() => setShowDatePicker(false)}
+              >
+                <Text style={{
+                  fontSize: typography.sizes.md,
+                  fontWeight: typography.weights.semibold,
+                  color: colors.text,
+                }}>إلغاء</Text>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [{
+                  flex: 1,
+                  paddingVertical: spacing.md,
+                  borderRadius: borderRadius.md,
+                  alignItems: 'center',
+                  backgroundColor: colors.primary,
+                  ...shadows.sm,
+                }, pressed && { opacity: 0.7 }]}
+                onPress={confirmDatePicker}
+              >
+                <Text style={{
+                  fontSize: typography.sizes.md,
+                  fontWeight: typography.weights.bold,
+                  color: '#FFFFFF',
+                }}>تأكيد</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* Time Picker Modal */}
+      {showTimePicker && (
+        <View style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000,
+        }}>
+          <View style={{
+            backgroundColor: colors.surface,
+            borderRadius: borderRadius.xl,
+            padding: spacing.lg,
+            width: '85%',
+            maxWidth: 400,
+            ...shadows.xl,
+          }}>
+            <Text style={{
+              fontSize: typography.sizes.xl,
+              fontWeight: typography.weights.bold,
+              color: colors.text,
+              marginBottom: spacing.lg,
+              textAlign: 'center',
+            }}>اختر الوقت</Text>
+            
+            <DateTimePicker
+              value={tempDate}
+              mode="time"
+              display="spinner"
+              onChange={handleTimeChange}
+              style={{ height: 200 }}
+            />
+
+            <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.lg }}>
+              <Pressable
+                style={({ pressed }) => [{
+                  flex: 1,
+                  paddingVertical: spacing.md,
+                  borderRadius: borderRadius.md,
+                  alignItems: 'center',
+                  backgroundColor: colors.background,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }, pressed && { opacity: 0.7 }]}
+                onPress={() => setShowTimePicker(false)}
+              >
+                <Text style={{
+                  fontSize: typography.sizes.md,
+                  fontWeight: typography.weights.semibold,
+                  color: colors.text,
+                }}>إلغاء</Text>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [{
+                  flex: 1,
+                  paddingVertical: spacing.md,
+                  borderRadius: borderRadius.md,
+                  alignItems: 'center',
+                  backgroundColor: colors.primary,
+                  ...shadows.sm,
+                }, pressed && { opacity: 0.7 }]}
+                onPress={confirmTimePicker}
+              >
+                <Text style={{
+                  fontSize: typography.sizes.md,
+                  fontWeight: typography.weights.bold,
+                  color: '#FFFFFF',
+                }}>تأكيد</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      )}
     </KeyboardAvoidingView>
   );
 }
