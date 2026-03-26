@@ -9,6 +9,7 @@ import { useSessions } from '@/hooks/useSessions';
 import { spacing, borderRadius, typography } from '@/constants/theme';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAlert } from '@/template';
+import { getSupabaseClient } from '@/template';
 
 const FUNNY_TITLES = [
   'معركة النرد الطاحنة',
@@ -37,6 +38,7 @@ export default function CreateSessionScreen() {
   const [location, setLocation] = useState<'بيت البصري' | 'جراسياس'>('بيت البصري');
   const [maxPlayers, setMaxPlayers] = useState(8);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [generatingTitle, setGeneratingTitle] = useState(false);
 
   const requiredFields = { title };
   const filledCount = Object.values(requiredFields).filter(v => v.trim()).length;
@@ -66,14 +68,39 @@ export default function CreateSessionScreen() {
   };
 
   const formatDate = (date: Date) => {
-    return date.toISOString().split('T')[0];
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}/${month}/${day}`;
   };
 
   const formatTime = (date: Date) => {
-    const hours = date.getHours();
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    const ampm = hours >= 12 ? 'مساءً' : 'صباحاً';
-    return `${hours % 12 || 12}:${minutes} ${ampm}`;
+    return date.toLocaleTimeString('ar-SA', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+  };
+
+  const generateAITitle = async () => {
+    setGeneratingTitle(true);
+    try {
+      const supabase = getSupabaseClient();
+      const { data, error } = await supabase.functions.invoke('generate-funny-title');
+      
+      if (error) {
+        showAlert('خطأ', 'فشل توليد العنوان');
+        return;
+      }
+      
+      if (data?.title) {
+        setTitle(data.title);
+      }
+    } catch (error: any) {
+      showAlert('خطأ', error.message || 'فشل توليد العنوان');
+    } finally {
+      setGeneratingTitle(false);
+    }
   };
 
   const handleCreate = async () => {
@@ -286,14 +313,84 @@ export default function CreateSessionScreen() {
           bgColor={colors.primary + '15'} 
         />
 
-        <CustomInput 
-          label="عنوان الجلسة *" 
-          field="title" 
-          value={title} 
-          onChangeText={setTitle} 
-          placeholder="مثال: جلسة استراتيجية مسائية"
-          icon="title"
-        />
+        <View style={{ marginBottom: spacing.md }}>
+          <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{
+                fontSize: typography.sizes.sm,
+                fontWeight: typography.weights.semibold,
+                color: isFieldInvalid('title', title) ? colors.error : colors.textSecondary,
+                marginBottom: spacing.xs,
+                textAlign: 'right',
+              }}>
+                عنوان الجلسة *
+              </Text>
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: colors.surface,
+                borderRadius: borderRadius.md,
+                borderWidth: 1.5,
+                borderColor: isFieldInvalid('title', title) ? colors.error : (title ? colors.primary + '50' : colors.border),
+                paddingHorizontal: spacing.md,
+                minHeight: 52,
+                ...shadows.sm,
+              }}>
+                <MaterialIcons 
+                  name="title" 
+                  size={20} 
+                  color={isFieldInvalid('title', title) ? colors.error : (title ? colors.primary : colors.textLight)} 
+                  style={{ marginEnd: spacing.sm }} 
+                />
+                <TextInput
+                  style={{
+                    flex: 1,
+                    fontSize: typography.sizes.md,
+                    color: colors.text,
+                    textAlign: I18nManager.isRTL ? 'right' : 'right',
+                    paddingVertical: spacing.md,
+                  }}
+                  placeholder="مثال: جلسة استراتيجية مسائية"
+                  placeholderTextColor={colors.textLight}
+                  value={title}
+                  onChangeText={setTitle}
+                  onBlur={() => markTouched('title')}
+                />
+                {title.trim() !== '' && !isFieldInvalid('title', title) && (
+                  <MaterialIcons name="check-circle" size={18} color={colors.success} style={{ marginStart: spacing.sm }} />
+                )}
+              </View>
+              {isFieldInvalid('title', title) && (
+                <Text style={{ fontSize: typography.sizes.xs, color: colors.error, marginTop: spacing.xs, textAlign: 'right' }}>
+                  هذا الحقل مطلوب
+                </Text>
+              )}
+            </View>
+            
+            <Pressable
+              onPress={generateAITitle}
+              disabled={generatingTitle}
+              style={({ pressed }) => ({
+                width: 52,
+                height: 52,
+                borderRadius: borderRadius.md,
+                backgroundColor: generatingTitle ? colors.surfaceLight : colors.accent + '15',
+                borderWidth: 1.5,
+                borderColor: generatingTitle ? colors.border : colors.accent,
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: pressed ? 0.7 : 1,
+                ...shadows.sm,
+              })}
+            >
+              <MaterialIcons 
+                name={generatingTitle ? "hourglass-empty" : "auto-awesome"} 
+                size={24} 
+                color={generatingTitle ? colors.textLight : colors.accent} 
+              />
+            </Pressable>
+          </View>
+        </View>
 
         <SectionHeader 
           icon="place" 
