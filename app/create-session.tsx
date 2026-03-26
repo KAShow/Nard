@@ -481,23 +481,16 @@ export default function CreateSessionScreen() {
               textAlign: 'center',
             }}>اختر التاريخ</Text>
             
-            <View style={{
-              backgroundColor: colors.background,
-              borderRadius: borderRadius.md,
-              overflow: 'hidden',
-              marginBottom: spacing.md,
-            }}>
-              <DateTimePicker
-                value={tempDate}
-                mode="date"
-                display="spinner"
-                onChange={handleDateChange}
-                minimumDate={new Date()}
-                locale="ar"
-                style={{ width: '100%', height: 200 }}
-                textColor={colors.text}
-              />
-            </View>
+            <DateTimePicker
+              value={tempDate}
+              mode="date"
+              display="spinner"
+              onChange={handleDateChange}
+              minimumDate={new Date()}
+              locale="ar"
+              style={{ width: '100%', height: 220, backgroundColor: colors.background }}
+              themeVariant={colors.background === '#121212' ? 'dark' : 'light'}
+            />
 
             <View style={{ flexDirection: 'row', gap: spacing.sm }}>
               <Pressable
@@ -569,22 +562,15 @@ export default function CreateSessionScreen() {
               textAlign: 'center',
             }}>اختر الوقت</Text>
             
-            <View style={{
-              backgroundColor: colors.background,
-              borderRadius: borderRadius.md,
-              overflow: 'hidden',
-              marginBottom: spacing.md,
-            }}>
-              <DateTimePicker
-                value={tempDate}
-                mode="time"
-                display="spinner"
-                onChange={handleTimeChange}
-                locale="ar"
-                style={{ width: '100%', height: 200 }}
-                textColor={colors.text}
-              />
-            </View>
+            <DateTimePicker
+              value={tempDate}
+              mode="time"
+              display="spinner"
+              onChange={handleTimeChange}
+              locale="ar"
+              style={{ width: '100%', height: 220, backgroundColor: colors.background }}
+              themeVariant={colors.background === '#121212' ? 'dark' : 'light'}
+            />
 
             <View style={{ flexDirection: 'row', gap: spacing.sm }}>
               <Pressable
