@@ -235,16 +235,9 @@ export async function getUserProfile(userId: string) {
 // ==================== SESSION CONTROL ====================
 
 export async function startSession(sessionId: string) {
-  const now = new Date().toISOString();
-  
+  // استخدام دالة PostgreSQL RPC لضمان تسجيل التاريخ بشكل صحيح
   const { data, error } = await supabase
-    .from('sessions')
-    .update({
-      status: 'ongoing',
-      started_at: now,
-    })
-    .eq('id', sessionId)
-    .select();
+    .rpc('start_session_with_timestamp', { session_id: sessionId });
 
   if (error) {
     console.error('Error starting session:', error);
@@ -255,17 +248,12 @@ export async function startSession(sessionId: string) {
 }
 
 export async function endSession(sessionId: string, durationSeconds: number) {
-  const now = new Date().toISOString();
-  
+  // استخدام دالة PostgreSQL RPC لضمان تسجيل التاريخ بشكل صحيح
   const { data, error } = await supabase
-    .from('sessions')
-    .update({
-      status: 'completed',
-      ended_at: now,
-      duration_seconds: durationSeconds,
-    })
-    .eq('id', sessionId)
-    .select();
+    .rpc('end_session_with_timestamp', { 
+      session_id: sessionId,
+      duration_secs: durationSeconds 
+    });
 
   if (error) {
     console.error('Error ending session:', error);
