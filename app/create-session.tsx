@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, ScrollView, Pressable, KeyboardAvoidingView, Platform, I18nManager } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -11,17 +11,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useAlert } from '@/template';
 import { getSupabaseClient } from '@/template';
 
-const FUNNY_TITLES = [
-  'معركة النرد الطاحنة',
-  'ليلة الانتقام والمكر',
-  'صراع العمالقة في نص الليل',
-  'جلسة تكسير الرؤوس (بالمحبة)',
-  'كش ملك.. أو النرد!',
-  'جلسة الضحك والدموع',
-  'تدمير الصداقات.. مرحباً!',
-  'جلسة الخداع الاستراتيجي',
-  'مين بيخسر اليوم؟',
-];
+
 
 export default function CreateSessionScreen() {
   const insets = useSafeAreaInsets();
@@ -31,7 +21,7 @@ export default function CreateSessionScreen() {
   const { showAlert } = useAlert();
   const { colors, shadows } = useTheme();
 
-  const [title, setTitle] = useState(() => FUNNY_TITLES[Math.floor(Math.random() * FUNNY_TITLES.length)]);
+  const [title, setTitle] = useState('');
   const [dateObj, setDateObj] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
@@ -39,6 +29,7 @@ export default function CreateSessionScreen() {
   const [maxPlayers, setMaxPlayers] = useState(8);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [generatingTitle, setGeneratingTitle] = useState(false);
+  const [initialTitleLoaded, setInitialTitleLoaded] = useState(false);
 
   const requiredFields = { title };
   const filledCount = Object.values(requiredFields).filter(v => v.trim()).length;
@@ -82,24 +73,41 @@ export default function CreateSessionScreen() {
     });
   };
 
-  const generateAITitle = async () => {
+  // Auto-generate title on mount
+  useEffect(() => {
+    generateAITitle(true);
+  }, []);
+
+  const generateAITitle = async (isInitial = false) => {
     setGeneratingTitle(true);
     try {
       const supabase = getSupabaseClient();
       const { data, error } = await supabase.functions.invoke('generate-funny-title');
       
       if (error) {
-        showAlert('خطأ', 'فشل توليد العنوان');
+        if (!isInitial) {
+          showAlert('خطأ', 'فشل توليد العنوان');
+        }
+        // Fallback to a simple title on error
+        setTitle('جلسة ألعاب لوحة');
         return;
       }
       
       if (data?.title) {
         setTitle(data.title);
+      } else if (isInitial) {
+        setTitle('جلسة ألعاب لوحة');
       }
     } catch (error: any) {
-      showAlert('خطأ', error.message || 'فشل توليد العنوان');
+      if (!isInitial) {
+        showAlert('خطأ', error.message || 'فشل توليد العنوان');
+      }
+      setTitle('جلسة ألعاب لوحة');
     } finally {
       setGeneratingTitle(false);
+      if (isInitial) {
+        setInitialTitleLoaded(true);
+      }
     }
   };
 
@@ -350,7 +358,7 @@ export default function CreateSessionScreen() {
                     textAlign: I18nManager.isRTL ? 'right' : 'right',
                     paddingVertical: spacing.md,
                   }}
-                  placeholder="مثال: جلسة استراتيجية مسائية"
+                  placeholder={!initialTitleLoaded ? "جاري توليد عنوان مضحك..." : "مثال: جلسة استراتيجية مسائية"}
                   placeholderTextColor={colors.textLight}
                   value={title}
                   onChangeText={setTitle}
@@ -368,7 +376,7 @@ export default function CreateSessionScreen() {
             </View>
             
             <Pressable
-              onPress={generateAITitle}
+              onPress={() => generateAITitle(false)}
               disabled={generatingTitle}
               style={({ pressed }) => ({
                 width: 52,
