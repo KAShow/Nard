@@ -116,6 +116,13 @@ export default function SessionDetailScreen() {
     return () => clearInterval(interval);
   }, []);
 
+  // Auto-redirect if session was deleted
+  useEffect(() => {
+    if (!session && user) {
+      router.replace('/(tabs)');
+    }
+  }, [session, user]);
+
   if (!session || !user) {
     return (
       <View style={{
