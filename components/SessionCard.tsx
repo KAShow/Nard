@@ -25,9 +25,13 @@ export function SessionCard({ session }: SessionCardProps) {
     }).format(date);
   };
 
-  const spotsLeft = session.maxPlayers - session.attendees.length;
+  // Defensive: ensure attendees and ratings are always arrays
+  const attendees = session.attendees || [];
+  const ratings = session.ratings || [];
+
+  const spotsLeft = session.maxPlayers - attendees.length;
   const isFull = spotsLeft <= 0;
-  const fillPercent = Math.min((session.attendees.length / session.maxPlayers) * 100, 100);
+  const fillPercent = Math.min((attendees.length / session.maxPlayers) * 100, 100);
   const isAlmostFull = fillPercent > 90;
 
   const statusBorderColor = (() => {
@@ -41,8 +45,8 @@ export function SessionCard({ session }: SessionCardProps) {
     }
   })();
 
-  const visibleAttendees = session.attendees.slice(0, 4);
-  const extraCount = session.attendees.length - 4;
+  const visibleAttendees = attendees.slice(0, 4);
+  const extraCount = attendees.length - 4;
 
   return (
     <Pressable
@@ -277,7 +281,7 @@ export function SessionCard({ session }: SessionCardProps) {
                 marginStart: spacing.xs,
               }}
             >
-              {session.attendees.length} / {session.maxPlayers}
+              {attendees.length} / {session.maxPlayers}
             </Text>
           </View>
 
