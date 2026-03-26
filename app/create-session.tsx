@@ -21,7 +21,13 @@ export default function CreateSessionScreen() {
   const { showAlert } = useAlert();
   const { colors, shadows } = useTheme();
 
-  const [title, setTitle] = useState('');
+  const FUNNY_TITLES = [
+    'معركة الاستراتيجيات',
+    'ليلة الانتقام',
+    'مؤامرات النرد',
+  ];
+
+  const [title, setTitle] = useState(() => FUNNY_TITLES[Math.floor(Math.random() * FUNNY_TITLES.length)]);
   const [dateObj, setDateObj] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
@@ -29,7 +35,6 @@ export default function CreateSessionScreen() {
   const [maxPlayers, setMaxPlayers] = useState(8);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [generatingTitle, setGeneratingTitle] = useState(false);
-  const [initialTitleLoaded, setInitialTitleLoaded] = useState(false);
 
   const requiredFields = { title };
   const filledCount = Object.values(requiredFields).filter(v => v.trim()).length;
@@ -73,41 +78,24 @@ export default function CreateSessionScreen() {
     });
   };
 
-  // Auto-generate title on mount
-  useEffect(() => {
-    generateAITitle(true);
-  }, []);
-
-  const generateAITitle = async (isInitial = false) => {
+  const generateAITitle = async () => {
     setGeneratingTitle(true);
     try {
       const supabase = getSupabaseClient();
       const { data, error } = await supabase.functions.invoke('generate-funny-title');
       
       if (error) {
-        if (!isInitial) {
-          showAlert('خطأ', 'فشل توليد العنوان');
-        }
-        // Fallback to a simple title on error
-        setTitle('جلسة ألعاب لوحة');
+        showAlert('خطأ', 'فشل توليد العنوان');
         return;
       }
       
       if (data?.title) {
         setTitle(data.title);
-      } else if (isInitial) {
-        setTitle('جلسة ألعاب لوحة');
       }
     } catch (error: any) {
-      if (!isInitial) {
-        showAlert('خطأ', error.message || 'فشل توليد العنوان');
-      }
-      setTitle('جلسة ألعاب لوحة');
+      showAlert('خطأ', error.message || 'فشل توليد العنوان');
     } finally {
       setGeneratingTitle(false);
-      if (isInitial) {
-        setInitialTitleLoaded(true);
-      }
     }
   };
 
@@ -358,7 +346,7 @@ export default function CreateSessionScreen() {
                     textAlign: I18nManager.isRTL ? 'right' : 'right',
                     paddingVertical: spacing.md,
                   }}
-                  placeholder={!initialTitleLoaded ? "جاري توليد عنوان مضحك..." : "مثال: جلسة استراتيجية مسائية"}
+                  placeholder="مثال: جلسة استراتيجية مسائية"
                   placeholderTextColor={colors.textLight}
                   value={title}
                   onChangeText={setTitle}
@@ -376,7 +364,7 @@ export default function CreateSessionScreen() {
             </View>
             
             <Pressable
-              onPress={() => generateAITitle(false)}
+              onPress={generateAITitle}
               disabled={generatingTitle}
               style={({ pressed }) => ({
                 width: 52,
