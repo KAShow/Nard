@@ -51,6 +51,7 @@ export default function SessionDetailScreen() {
   const { showAlert } = useAlert();
   const { colors, shadows } = useTheme();
 
+  const [isDeleted, setIsDeleted] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [gameBrought, setGameBrought] = useState('');
   const [snackBrought, setSnackBrought] = useState('');
@@ -110,18 +111,19 @@ export default function SessionDetailScreen() {
 
   // Refresh sessions periodically for real-time updates (polling)
   useEffect(() => {
+    if (isDeleted) return;
     const interval = setInterval(() => {
       refreshSessions();
-    }, 5000); // Refresh every 5 seconds
+    }, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [isDeleted]);
 
-  // Auto-redirect if session was deleted
+  // Auto-redirect if session was deleted by someone else
   useEffect(() => {
-    if (!session && user) {
+    if (!session && user && !isDeleted) {
       router.replace('/(tabs)');
     }
-  }, [session, user]);
+  }, [session, user, isDeleted]);
 
   if (!session || !user) {
     return (
@@ -304,7 +306,9 @@ export default function SessionDetailScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
+              setIsDeleted(true);
               await deleteSession(session.id);
+              await refreshSessions();
               router.replace('/(tabs)');
               setTimeout(() => {
                 showAlert('تم!', 'تم حذف الجلسة بنجاح');
