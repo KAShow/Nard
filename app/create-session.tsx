@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, ScrollView, Pressable, KeyboardAvoidingView, Platform, I18nManager } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, ScrollView, Pressable, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,35 +20,31 @@ export default function CreateSessionScreen() {
   const { showAlert } = useAlert();
   const { colors, shadows } = useTheme();
 
-  const FUNNY_TITLES = [
-    'معركة النرد الطاحنة',
-    'ليلة الانتقام والمكر',
-    'مؤامرات وخيانات',
-    'ساحة الاستراتيجيات',
-    'حرب العروش المصغرة',
-    'ليلة الذكاء والدهاء',
-    'معركة الأذكياء',
-    'تحدي العقول',
-  ];
-
-  const [title, setTitle] = useState(() => FUNNY_TITLES[Math.floor(Math.random() * FUNNY_TITLES.length)]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [dateObj, setDateObj] = useState(new Date());
   const [tempDate, setTempDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [location, setLocation] = useState<'بيت البصري' | 'جراسياس'>('بيت البصري');
   const [maxPlayers, setMaxPlayers] = useState(8);
-  const [touched, setTouched] = useState<Record<string, boolean>>({});
 
-  const progressPercent = title.trim() ? 100 : 0;
-
-  const markTouched = (field: string) => {
-    setTouched(prev => ({ ...prev, [field]: true }));
+  const formatDate = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
 
-  const isFieldInvalid = (field: string, value: string) => {
-    return touched[field] && !value.trim();
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString('ar-SA', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
   };
+
+  // العنوان = تاريخ اليوم المختار تلقائياً
+  const title = formatDate(dateObj);
 
   const handleDateChange = (event: { type: string }, selectedDate?: Date) => {
     if (selectedDate) {
@@ -82,51 +78,35 @@ export default function CreateSessionScreen() {
     setShowTimePicker(true);
   };
 
-  const formatDate = (date: Date) => {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('ar-SA', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
-  };
-
-
-
   const handleCreate = async () => {
-    if (!user) return;
-
-    if (!title.trim()) {
-      setTouched({ title: true });
-      showAlert('تنبيه', 'الرجاء ملء جميع الحقول المطلوبة');
-      return;
-    }
+    if (!user || isSubmitting) return;
 
     if (maxPlayers < 2) {
       showAlert('تنبيه', 'عدد اللاعبين يجب أن يكون 2 على الأقل');
       return;
     }
 
-    await createSession({
-      hostId: user.id,
-      hostName: user.name,
-      title: title.trim(),
-      description: '', 
-      date: formatDate(dateObj),
-      time: formatTime(dateObj),
-      location: location,
-      maxPlayers,
-      status: 'upcoming',
-    });
+    setIsSubmitting(true);
+    try {
+      await createSession({
+        hostId: user.id,
+        hostName: user.name,
+        title,
+        description: '',
+        date: formatDate(dateObj),
+        time: formatTime(dateObj),
+        location: location,
+        maxPlayers,
+        status: 'upcoming',
+      });
 
-    showAlert('نجاح', 'تم إنشاء الجلسة بنجاح');
-    router.back();
+      showAlert('نجاح', 'تم إنشاء الجلسة بنجاح');
+      router.back();
+    } catch (error) {
+      showAlert('خطأ', 'فشل إنشاء الجلسة، حاول مرة أخرى');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const SectionHeader = ({ icon, title, color, bgColor }: { icon: keyof typeof MaterialIcons.glyphMap, title: string, color: string, bgColor: string }) => (
@@ -155,17 +135,13 @@ export default function CreateSessionScreen() {
     </View>
   );
 
-  const CustomInput = ({ 
-    label, value, onChangeText, placeholder, field, icon, editable = true, onPress
-  }: any) => {
-    const invalid = isFieldInvalid(field, value);
-    
-    const InnerInput = (
+  const PickerField = ({ label, value, icon, onPress }: { label: string, value: string, icon: keyof typeof MaterialIcons.glyphMap, onPress: () => void }) => (
+    <Pressable onPress={onPress}>
       <View style={{ marginBottom: spacing.md }}>
         <Text style={{
           fontSize: typography.sizes.sm,
           fontWeight: typography.weights.semibold,
-          color: invalid ? colors.error : colors.textSecondary,
+          color: colors.textSecondary,
           marginBottom: spacing.xs,
           textAlign: 'right',
           width: '100%',
@@ -175,60 +151,28 @@ export default function CreateSessionScreen() {
         <View style={{
           flexDirection: 'row',
           alignItems: 'center',
-          backgroundColor: editable ? colors.surface : colors.surfaceLight,
+          backgroundColor: colors.surfaceLight,
           borderRadius: borderRadius.md,
           borderWidth: 1.5,
-          borderColor: invalid ? colors.error : (value ? colors.primary + '50' : colors.border),
+          borderColor: colors.primary + '50',
           paddingHorizontal: spacing.md,
           minHeight: 52,
           ...shadows.sm,
         }}>
-          {icon && (
-            <MaterialIcons 
-              name={icon} 
-              size={20} 
-              color={invalid ? colors.error : (value && editable ? colors.primary : colors.textLight)} 
-              style={{ marginEnd: spacing.sm }} 
-            />
-          )}
-          <TextInput
-            style={{
-              flex: 1,
-              fontSize: typography.sizes.md,
-              color: editable ? colors.text : colors.textSecondary,
-              textAlign: I18nManager.isRTL ? 'right' : 'right',
-              paddingVertical: spacing.md,
-            }}
-            placeholder={placeholder}
-            placeholderTextColor={colors.textLight}
-            value={value}
-            onChangeText={onChangeText}
-            onBlur={() => markTouched(field)}
-            editable={editable}
-            pointerEvents={editable ? 'auto' : 'none'}
-          />
-          {value.trim() !== '' && editable && !invalid && (
-             <MaterialIcons name="check-circle" size={18} color={colors.success} style={{ marginStart: spacing.sm }} />
-          )}
-        </View>
-        {invalid && (
-          <Text style={{ fontSize: typography.sizes.xs, color: colors.error, marginTop: spacing.xs, textAlign: 'right' }}>
-            هذا الحقل مطلوب
+          <MaterialIcons name={icon} size={20} color={colors.textLight} style={{ marginEnd: spacing.sm }} />
+          <Text style={{
+            flex: 1,
+            fontSize: typography.sizes.md,
+            color: colors.textSecondary,
+            textAlign: 'right',
+            paddingVertical: spacing.md,
+          }}>
+            {value}
           </Text>
-        )}
+        </View>
       </View>
-    );
-
-    if (onPress) {
-      return (
-        <Pressable onPress={onPress}>
-          {InnerInput}
-        </Pressable>
-      );
-    }
-
-    return InnerInput;
-  };
+    </Pressable>
+  );
 
   const LocationRadioOption = ({ title, selected }: { title: 'بيت البصري' | 'جراسياس', selected: boolean }) => (
     <Pressable
@@ -269,63 +213,32 @@ export default function CreateSessionScreen() {
       style={{ flex: 1, backgroundColor: colors.background }}
     >
 
-      {/* Progress Bar */}
-      <View style={{ height: 4, backgroundColor: colors.divider }}>
-        <View style={{
-          height: 4,
-          width: `${progressPercent}%`,
-          backgroundColor: progressPercent === 100 ? colors.success : colors.primary,
-          borderTopEndRadius: 2,
-          borderBottomEndRadius: 2,
-        }} />
-      </View>
-
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ padding: spacing.lg, paddingBottom: insets.bottom + spacing.xl }}
         showsVerticalScrollIndicator={false}
       >
-        <SectionHeader 
-          icon="info-outline" 
-          title="معلومات الجلسة" 
-          color={colors.primary} 
-          bgColor={colors.primary + '15'} 
-        />
-
-        <CustomInput 
-          label="عنوان الجلسة *" 
-          field="title" 
-          value={title} 
-          onChangeText={setTitle} 
-          placeholder="مثال: جلسة استراتيجية مسائية"
-          icon="title"
-        />
-
-        <SectionHeader 
-          icon="place" 
-          title="الوقت والمكان" 
-          color={colors.accent} 
-          bgColor={colors.accent + '15'} 
+        <SectionHeader
+          icon="place"
+          title="الوقت والمكان"
+          color={colors.accent}
+          bgColor={colors.accent + '15'}
         />
 
         <View style={{ flexDirection: 'row', gap: spacing.md }}>
           <View style={{ flex: 1 }}>
-            <CustomInput 
-              label="التاريخ *" 
-              field="date" 
-              value={formatDate(dateObj)} 
+            <PickerField
+              label="التاريخ *"
+              value={formatDate(dateObj)}
               icon="calendar-today"
-              editable={false}
               onPress={openDatePicker}
             />
           </View>
           <View style={{ flex: 1 }}>
-            <CustomInput 
-              label="الوقت *" 
-              field="time" 
-              value={formatTime(dateObj)} 
+            <PickerField
+              label="الوقت *"
+              value={formatTime(dateObj)}
               icon="access-time"
-              editable={false}
               onPress={openTimePicker}
             />
           </View>
@@ -431,24 +344,29 @@ export default function CreateSessionScreen() {
         <Pressable
           style={({ pressed }) => [{
             flexDirection: 'row',
-            backgroundColor: progressPercent === 100 ? colors.primary : colors.primaryLight,
+            backgroundColor: isSubmitting ? colors.primaryLight : colors.primary,
             paddingVertical: spacing.md + 4,
             paddingHorizontal: spacing.lg,
             borderRadius: borderRadius.lg,
             alignItems: 'center',
             justifyContent: 'center',
             marginBottom: spacing.xxl,
+            opacity: isSubmitting ? 0.7 : 1,
             ...shadows.md,
-          }, pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] }]}
+          }, pressed && !isSubmitting && { opacity: 0.85, transform: [{ scale: 0.98 }] }]}
           onPress={handleCreate}
+          disabled={isSubmitting}
         >
-          {/* In RTL, the first element goes to the right, followed by text. But we want Icon text -> or text icon? Let's just keep standard Icon then Text, which looks great universally if marginEnd is on Icon */}
-          <MaterialIcons name="event-available" size={24} color="#FFFFFF" style={{ marginEnd: spacing.sm }} />
+          {isSubmitting ? (
+            <ActivityIndicator size="small" color="#FFFFFF" style={{ marginEnd: spacing.sm }} />
+          ) : (
+            <MaterialIcons name="event-available" size={24} color="#FFFFFF" style={{ marginEnd: spacing.sm }} />
+          )}
           <Text style={{
             fontSize: typography.sizes.lg,
             fontWeight: typography.weights.bold,
             color: '#FFFFFF',
-          }}>إنشاء الجلسة</Text>
+          }}>{isSubmitting ? 'جاري الإنشاء...' : 'إنشاء الجلسة'}</Text>
         </Pressable>
       </ScrollView>
 
